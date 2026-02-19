@@ -736,12 +736,21 @@ chkdsk C: /scan >nul 2>&1
 echo          [OK] Disque verifie
 echo.
 
-REM ETAPE COMMUNE 19: Optimisation disque
+REM ETAPE COMMUNE 19: Optimisation disque (SSD/HDD)
 set /a CURRENT_STEP+=1
 call :PROGRESS_BAR "Optimisation disque C:\"
-call :SUB_STEP "Defragmentation/TRIM (peut prendre du temps)"
-defrag C: /O >nul 2>&1
-echo          [OK] C:\ optimise
+call :SUB_STEP "Detection type de disque"
+set "IS_SSD=0"
+for /f "skip=1 tokens=*" %%i in ('wmic diskdrive get MediaType 2^>nul ^| findstr /i "SSD"') do set "IS_SSD=1"
+if "%IS_SSD%"=="1" (
+    call :SUB_STEP "SSD detecte - Lancement TRIM"
+    defrag C: /L >nul 2>&1
+    echo          [OK] C:\ optimise (SSD - TRIM)
+) else (
+    call :SUB_STEP "HDD detecte - Defragmentation (peut prendre du temps)"
+    defrag C: /O >nul 2>&1
+    echo          [OK] C:\ optimise (HDD - Defragmentation)
+)
 echo.
 
 REM ETAPE COMMUNE 20: Windows Update
@@ -752,10 +761,12 @@ net stop wuauserv >nul 2>&1
 net stop bits >nul 2>&1
 call :SUB_STEP "Suppression cache"
 DEL /Q /F /S "C:\Windows\SoftwareDistribution\Download\*.*" >nul 2>&1
+call :SUB_STEP "Nettoyage composants (DISM - peut prendre du temps)"
+Dism.exe /online /Cleanup-Image /StartComponentCleanup >nul 2>&1
 call :SUB_STEP "Redemarrage services"
 net start wuauserv >nul 2>&1
 net start bits >nul 2>&1
-echo          [OK] Cache nettoye
+echo          [OK] Cache nettoye et composants supprimes
 echo.
 
 REM --- FIN NETTOYAGES COMMUNS ---
