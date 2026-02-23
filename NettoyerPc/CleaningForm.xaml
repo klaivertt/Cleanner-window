@@ -1,0 +1,139 @@
+<Window x:Class="NettoyerPc.CleaningForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nettoyage en cours..." 
+        Height="700" Width="900"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F5F5F5"
+        Closing="Window_Closing">
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- En-tête -->
+        <Border Grid.Row="0" Background="#0078D7" Padding="20">
+            <StackPanel>
+                <TextBlock x:Name="TitleText" 
+                          Text="NETTOYAGE EN COURS" 
+                          FontSize="28" 
+                          FontWeight="Bold" 
+                          Foreground="White"
+                          HorizontalAlignment="Center"/>
+                <TextBlock x:Name="SubtitleText"
+                          Text="Veuillez patienter..." 
+                          FontSize="14" 
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Zone de progression -->
+        <ScrollViewer Grid.Row="1" 
+                     VerticalScrollBarVisibility="Auto"
+                     Margin="20">
+            <StackPanel x:Name="StepsPanel">
+                <!-- Les étapes seront ajoutées dynamiquement ici -->
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Barre de progression globale -->
+        <Border Grid.Row="2" 
+               Background="White" 
+               BorderBrush="#CCCCCC" 
+               BorderThickness="0,1,0,1"
+               Padding="20">
+            <StackPanel>
+                <Grid Margin="0,0,0,10">
+                    <TextBlock x:Name="ProgressText" 
+                              Text="Préparation..." 
+                              FontSize="14"
+                              FontWeight="SemiBold"/>
+                    <TextBlock x:Name="ProgressPercent" 
+                              Text="0%" 
+                              FontSize="14"
+                              FontWeight="Bold"
+                              HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <ProgressBar x:Name="GlobalProgress" 
+                            Height="30" 
+                            Minimum="0" 
+                            Maximum="100" 
+                            Value="0"/>
+                
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Fichiers supprimés" 
+                                  FontSize="11" 
+                                  Foreground="#666"/>
+                        <TextBlock x:Name="FilesDeletedText" 
+                                  Text="0" 
+                                  FontSize="18" 
+                                  FontWeight="Bold"
+                                  Foreground="#0078D7"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Espace libéré" 
+                                  FontSize="11" 
+                                  Foreground="#666"/>
+                        <TextBlock x:Name="SpaceFreedText" 
+                                  Text="0 MB" 
+                                  FontSize="18" 
+                                  FontWeight="Bold"
+                                  Foreground="#107C10"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Temps écoulé" 
+                                  FontSize="11" 
+                                  Foreground="#666"/>
+                        <TextBlock x:Name="ElapsedTimeText" 
+                                  Text="0m 0s" 
+                                  FontSize="18" 
+                                  FontWeight="Bold"
+                                  Foreground="#D13438"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Zone de logs -->
+        <Border Grid.Row="3" 
+               Background="White" 
+               BorderBrush="#CCCCCC" 
+               BorderThickness="0,0,0,0"
+               Padding="20"
+               Height="150">
+            <DockPanel>
+                <TextBlock Text="Journal d'activité :" 
+                          DockPanel.Dock="Top"
+                          FontSize="12" 
+                          FontWeight="SemiBold"
+                          Margin="0,0,0,5"/>
+                
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                             x:Name="LogScrollViewer">
+                    <TextBlock x:Name="LogText" 
+                              FontFamily="Consolas" 
+                              FontSize="11"
+                              TextWrapping="Wrap"
+                              Foreground="#333"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

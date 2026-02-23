@@ -1,0 +1,67 @@
+<Window x:Class="NettoyerPc.SelectionForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="🔧 Sélection personnalisée"
+        Height="780" Width="860"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- En-tête -->
+        <Border Grid.Row="0" Background="#0078D7" Padding="20,15">
+            <StackPanel>
+                <TextBlock Text="🔧 SÉLECTION PERSONNALISÉE"
+                           FontSize="22" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Cochez les opérations à exécuter, puis cliquez sur Démarrer"
+                           FontSize="13" Foreground="White"
+                           HorizontalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Contenu scrollable -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="15">
+            <StackPanel x:Name="ContentPanel" Margin="0,0,5,0"/>
+        </ScrollViewer>
+
+        <!-- Pied de page -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#CCCCCC"
+                BorderThickness="0,1,0,0" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <Button Content="✅ Tout sélectionner" Click="BtnSelectAll_Click"
+                            Padding="12,6" Margin="0,0,8,0"
+                            Background="#F0F0F0"/>
+                    <Button Content="☐ Tout désélectionner" Click="BtnDeselectAll_Click"
+                            Padding="12,6"
+                            Background="#F0F0F0"/>
+                    <TextBlock x:Name="SelectionCount" VerticalAlignment="Center"
+                               Margin="15,0,0,0" Foreground="#555"
+                               FontSize="13"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Annuler" Click="BtnCancel_Click"
+                            Padding="20,8" Margin="0,0,10,0"
+                            Background="#F0F0F0"/>
+                    <Button x:Name="BtnStart" Content="🚀 DÉMARRER LA SÉLECTION"
+                            Click="BtnStart_Click"
+                            Padding="20,8"
+                            Background="#0078D7" Foreground="White"
+                            FontWeight="Bold" FontSize="14"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
