@@ -16,13 +16,13 @@ namespace NettoyerPc.Modules
         {
             var steps = new List<CleaningStep>
             {
-                new() { Name = "Mise à jour Windows Defender" },
-                new() { Name = "Scan antivirus rapide" }
+                new() { Name = "Mise à jour Windows Defender", Category = "security" },
+                new() { Name = "Scan antivirus rapide",        Category = "security" }
             };
 
-            if (mode == CleaningMode.DeepClean)
+            if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
             {
-                steps.Add(new() { Name = "Scan antivirus complet" });
+                steps.Add(new() { Name = "Scan antivirus complet", Category = "security" });
             }
 
             return steps;

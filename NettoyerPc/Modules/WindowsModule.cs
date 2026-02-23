@@ -18,18 +18,18 @@ namespace NettoyerPc.Modules
         {
             var steps = new List<CleaningStep>
             {
-                new() { Name = "Corbeilles (tous disques)" },
-                new() { Name = "Journaux Windows" },
-                new() { Name = "Nettoyage disque (cleanmgr)" }
+                new() { Name = "Corbeilles (tous disques)",     Category = "windows" },
+                new() { Name = "Journaux Windows",              Category = "windows" },
+                new() { Name = "Nettoyage disque (cleanmgr)",   Category = "windows" }
             };
 
-            if (mode == CleaningMode.DeepClean)
+            if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
             {
-                steps.Add(new() { Name = "Optimisations registre" });
-                steps.Add(new() { Name = "Vérification disque C:" });
-                steps.Add(new() { Name = "Défragmentation (tous disques)" });
-                steps.Add(new() { Name = "Windows Update cache" });
-                steps.Add(new() { Name = "DISM cleanup" });
+                steps.Add(new() { Name = "Optimisations registre",           Category = "windows" });
+                steps.Add(new() { Name = "Vérification disque C:",           Category = "windows" });
+                steps.Add(new() { Name = "Défragmentation (tous disques)",   Category = "windows" });
+                steps.Add(new() { Name = "Windows Update cache",             Category = "windows" });
+                steps.Add(new() { Name = "DISM cleanup",                     Category = "windows" });
             }
 
             return steps;

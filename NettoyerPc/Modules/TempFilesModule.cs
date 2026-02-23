@@ -15,10 +15,10 @@ namespace NettoyerPc.Modules
         {
             return new List<CleaningStep>
             {
-                new() { Name = "Suppression TEMP utilisateur" },
-                new() { Name = "Suppression Windows Temp" },
-                new() { Name = "Suppression Prefetch" },
-                new() { Name = "Suppression Thumbnails" }
+                new() { Name = "Suppression TEMP utilisateur",  Category = "general" },
+                new() { Name = "Suppression Windows Temp",       Category = "general" },
+                new() { Name = "Suppression Prefetch",           Category = "general" },
+                new() { Name = "Suppression Thumbnails",         Category = "general" }
             };
         }
 

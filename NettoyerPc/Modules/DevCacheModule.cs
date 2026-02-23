@@ -17,17 +17,17 @@ namespace NettoyerPc.Modules
         {
             var steps = new List<CleaningStep>
             {
-                new() { Name = "Scan .svn (tous disques)" },
-                new() { Name = "Nettoyage logs Git (tous disques)" },
-                new() { Name = "Nettoyage Visual Studio (tous disques)" },
-                new() { Name = "Suppression node_modules (tous disques)" },
-                new() { Name = "Caches NuGet/Gradle/Maven/npm/pip" },
-                new() { Name = "VS Code cache (tous disques)" }
+                new() { Name = "Scan .svn (tous disques)",             Category = "dev" },
+                new() { Name = "Nettoyage logs Git (tous disques)",    Category = "dev" },
+                new() { Name = "Nettoyage Visual Studio (tous disques)",Category = "dev" },
+                new() { Name = "Suppression node_modules (tous disques)",Category = "dev" },
+                new() { Name = "Caches NuGet/Gradle/Maven/npm/pip",    Category = "dev" },
+                new() { Name = "VS Code cache (tous disques)",         Category = "dev" }
             };
 
-            if (mode == CleaningMode.DeepClean)
+            if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
             {
-                steps.Add(new() { Name = "Docker system prune" });
+                steps.Add(new() { Name = "Docker system prune", Category = "dev" });
             }
 
             return steps;

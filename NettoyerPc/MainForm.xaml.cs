@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -14,58 +15,160 @@ namespace NettoyerPc
 
         private void BtnComplete_Click(object sender, RoutedEventArgs e)
         {
-            var cleaningForm = new CleaningForm(Core.CleaningMode.Complete);
-            Hide();
-            cleaningForm.ShowDialog();
-            Show();
+            LaunchCleaning(Core.CleaningMode.Complete);
         }
 
         private void BtnDeepClean_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "Le nettoyage de printemps peut prendre 60-120 minutes.\n" +
-                "Un point de restauration sera créé avant de commencer.\n\n" +
-                "Voulez-vous continuer ?",
-                "Confirmation",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            if (Confirm(
+                "ðŸ”¥ NETTOYAGE DE PRINTEMPS\n\n" +
+                "Ce nettoyage inclut :\n" +
+                "  â€¢ Tout le nettoyage rapide\n" +
+                "  â€¢ Suppression des caches dÃ©veloppeur (npm, pip, gradle, NuGet)\n" +
+                "  â€¢ Cache Windows Update (anciens fichiers)\n" +
+                "  â€¢ DÃ©fragmentation et DISM\n\n" +
+                "â„¹ Les caches dev (npm, pip...) se re-tÃ©lÃ©chargeront au prochain build.\n" +
+                "âœ… Un point de restauration sera crÃ©Ã© automatiquement avant de commencer.\n\n" +
+                "DurÃ©e : 60-120 minutes. Continuer ?"))
+                LaunchCleaning(Core.CleaningMode.DeepClean);
+        }
 
-            if (result == MessageBoxResult.Yes)
+        private void BtnGamingDisk_Click(object sender, RoutedEventArgs e)
+        {
+            LaunchCleaningCustomModules(new HashSet<string>
             {
-                var cleaningForm = new CleaningForm(Core.CleaningMode.DeepClean);
-                Hide();
-                cleaningForm.ShowDialog();
-                Show();
-            }
+                // Caches gaming (100% sÃ»r - se recrÃ©e)
+                "Steam (shader cache, logs, dumps)",
+                "Epic Games (logs)",
+                "Battle.net (cache)",
+                "Steam cache (tous disques)",
+                "DirectX Shader Cache",
+                "Epic Games / Battle.net",
+                // Caches apps (pas l'app elle-mÃªme)
+                "Discord (cache, code cache, GPU cache)",
+                "Spotify (storage cache)",
+                "OBS Studio (logs)",
+                // Optimisation disque
+                "Optimisation/TRIM tous les disques",
+                "VÃ©rification erreurs disques (chkdsk)",
+                "DÃ©fragmentation intelligente (disques HDD)",
+                "TRIM disques SSD",
+                // Nettoyage de base sÃ»r
+                "Suppression TEMP utilisateur",
+                "Suppression Windows Temp",
+                "Suppression Thumbnails",
+                "Corbeilles (tous disques)",
+            });
+        }
+
+        private void BtnAdvanced_Click(object sender, RoutedEventArgs e)
+        {
+            if (Confirm(
+                "âš  MODE AVANCÃ‰ â€“ NETTOYAGE PROFOND\n\n" +
+                "Ce mode inclut absolument tout :\n" +
+                "  â€¢ Nettoyage complet + gaming + apps tierces\n" +
+                "  â€¢ Optimisation systÃ¨me (SFC, DISM, rÃ©seau)\n" +
+                "  â€¢ Suppression bloatwares Windows\n" +
+                "  â€¢ CrÃ©ation point de restauration automatique\n\n" +
+                "DurÃ©e estimÃ©e : 90-180 minutes\n\n" +
+                "Continuer ?"))
+                LaunchCleaning(Core.CleaningMode.Advanced);
+        }
+
+        private void BtnSysOpt_Click(object sender, RoutedEventArgs e)
+        {
+            if (Confirm(
+                "âš™ RÃ‰PARATION ET OPTIMISATION SYSTÃˆME\n\n" +
+                "7 Ã©tapes :\n" +
+                "  â€¢ SFC /scannow â€” vÃ©rifie l'intÃ©gritÃ© des fichiers Windows\n" +
+                "  â€¢ DISM /RestoreHealth â€” rÃ©pare l'image Windows\n" +
+                "  â€¢ DISM StartComponentCleanup â€” libÃ¨re espace WinSxS\n" +
+                "  â€¢ Reset rÃ©seau complet + DNS Cloudflare 1.1.1.1\n" +
+                "  â€¢ Rebuild cache polices\n" +
+                "  â€¢ TRIM / DÃ©fragmentation tous les disques\n\n" +
+                "â„¹ SFC et DISM peuvent durer 30 Ã  90 minutes.\n" +
+                "Votre PC reste utilisable pendant l'opÃ©ration.\n\n" +
+                "Continuer ?"))
+                LaunchCleaning(Core.CleaningMode.SystemOptimization);
+        }
+
+        private void BtnBloatware_Click(object sender, RoutedEventArgs e)
+        {
+            if (Confirm(
+                "âš  SUPPRESSION BLOATWARES\n\n" +
+                "Les applications suivantes seront supprimÃ©es DÃ‰FINITIVEMENT :\n" +
+                "  â€¢ Candy Crush et jeux King\n" +
+                "  â€¢ Facebook, Instagram, TikTok\n" +
+                "  â€¢ Xbox GameBar (raccourci Win+G ne fonctionnera plus)\n" +
+                "  â€¢ Cortana, Bing Search\n" +
+                "  â€¢ Netflix, Microsoft Solitaire, Clipchamp\n" +
+                "  â€¢ Mixed Reality Portal\n" +
+                "  + DÃ©sactivation de la tÃ©lÃ©mÃ©trie Microsoft\n\n" +
+                "âŒ Vos jeux et applications tierces (Steam, Epic, etc.) ne sont PAS affectÃ©s.\n\n" +
+                "Continuer ?"))
+                LaunchCleaningCustomModules(new HashSet<string>
+                {
+                    "Analyse bloatwares installÃ©s",
+                    "Suppression Candy Crush / Jeux King",
+                    "Suppression Apps sociales (Facebook, Instagram, TikTok)",
+                    "Suppression Xbox GameBar / Mixed Reality",
+                    "Suppression Cortana / Bing Search",
+                    "Suppression Netflix / Microsoft Solitaire",
+                    "DÃ©sactivation tÃ©lÃ©mÃ©trie Windows",
+                });
+        }
+
+        private void BtnThirdParty_Click(object sender, RoutedEventArgs e)
+        {
+            LaunchCleaningCustomModules(new HashSet<string>
+            {
+                "Discord (cache, code cache, GPU cache)",
+                "Spotify (storage cache)",
+                "Teams (cache, GPU cache)",
+                "Slack (cache, code cache)",
+                "OBS Studio (logs)",
+                "Steam (shader cache, logs, dumps)",
+                "Epic Games (logs)",
+                "Battle.net (cache)",
+            });
+        }
+
+        private void BtnCustom_Click(object sender, RoutedEventArgs e)
+        {
+            var selectionForm = new SelectionForm();
+            if (selectionForm.ShowDialog() == true && selectionForm.Confirmed)
+                LaunchCleaningCustomModules(selectionForm.SelectedSteps);
         }
 
         private void BtnReports_Click(object sender, RoutedEventArgs e)
         {
-            var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-            
-            if (Directory.Exists(reportDir))
-            {
-                try
-                {
-                    Process.Start("explorer.exe", reportDir);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(
-                        $"Impossible d'ouvrir le dossier des rapports:\n{ex.Message}",
-                        "Erreur",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                }
-            }
-            else
-            {
-                MessageBox.Show(
-                    "Aucun rapport disponible.\nLancez un nettoyage pour générer un rapport.",
-                    "Information",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
+            var viewer = new ReportViewerForm();
+            viewer.Owner = this;
+            viewer.ShowDialog();
+        }
+
+        // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        private void LaunchCleaning(Core.CleaningMode mode)
+        {
+            var form = new CleaningForm(mode);
+            Hide();
+            form.ShowDialog();
+            Show();
+        }
+
+        private void LaunchCleaningCustomModules(HashSet<string> steps)
+        {
+            var form = new CleaningForm(Core.CleaningMode.Custom, steps);
+            Hide();
+            form.ShowDialog();
+            Show();
+        }
+
+        private bool Confirm(string message)
+        {
+            return MessageBox.Show(message, "Confirmation",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
         }
     }
 }

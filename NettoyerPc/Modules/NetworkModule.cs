@@ -15,15 +15,15 @@ namespace NettoyerPc.Modules
         {
             var steps = new List<CleaningStep>
             {
-                new() { Name = "Flush DNS" }
+                new() { Name = "Flush DNS", Category = "network" }
             };
 
-            if (mode == CleaningMode.DeepClean)
+            if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
             {
-                steps.Add(new() { Name = "Configuration DNS Cloudflare" });
-                steps.Add(new() { Name = "Reset IP" });
-                steps.Add(new() { Name = "Reset Winsock" });
-                steps.Add(new() { Name = "Vidage cache ARP" });
+                steps.Add(new() { Name = "Configuration DNS Cloudflare", Category = "network" });
+                steps.Add(new() { Name = "Reset IP",                     Category = "network" });
+                steps.Add(new() { Name = "Reset Winsock",                Category = "network" });
+                steps.Add(new() { Name = "Vidage cache ARP",             Category = "network" });
             }
 
             return steps;

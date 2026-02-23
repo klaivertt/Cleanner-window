@@ -15,13 +15,13 @@ namespace NettoyerPc.Modules
         {
             var steps = new List<CleaningStep>
             {
-                new() { Name = "Steam cache (tous disques)" }
+                new() { Name = "Steam cache (tous disques)", Category = "gaming" }
             };
 
-            if (mode == CleaningMode.DeepClean)
+            if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
             {
-                steps.Add(new() { Name = "DirectX Shader Cache" });
-                steps.Add(new() { Name = "Epic Games / Battle.net" });
+                steps.Add(new() { Name = "DirectX Shader Cache",  Category = "gaming" });
+                steps.Add(new() { Name = "Epic Games / Battle.net",Category = "gaming" });
             }
 
             return steps;

@@ -15,10 +15,10 @@ namespace NettoyerPc.Modules
         {
             return new List<CleaningStep>
             {
-                new() { Name = "Nettoyage Firefox" },
-                new() { Name = "Nettoyage Chrome" },
-                new() { Name = "Nettoyage Edge" },
-                new() { Name = "Nettoyage Brave/Opera" }
+                new() { Name = "Nettoyage Firefox",    Category = "browser" },
+                new() { Name = "Nettoyage Chrome",     Category = "browser" },
+                new() { Name = "Nettoyage Edge",       Category = "browser" },
+                new() { Name = "Nettoyage Brave/Opera",Category = "browser" }
             };
         }
 

@@ -21,14 +21,19 @@ namespace NettoyerPc
         private bool _isCompleted = false;
         private readonly Dictionary<CleaningStep, Border> _stepUI = new();
 
-        public CleaningForm(CleaningMode mode)
+        public CleaningForm(CleaningMode mode, HashSet<string>? customSteps = null)
         {
             InitializeComponent();
-            
+
             _mode = mode;
             _engine = new CleaningEngine();
             _stopwatch = new Stopwatch();
-            
+
+            // Appliquer les étapes personnalisées si fourni
+            if (customSteps != null)
+                foreach (var s in customSteps)
+                    _engine.SelectedStepNames.Add(s);
+
             // Timer pour mettre à jour le temps écoulé
             _timer = new DispatcherTimer
             {
@@ -43,16 +48,24 @@ namespace NettoyerPc
             _engine.ProgressChanged += Engine_ProgressChanged;
 
             // Configuration de l'interface selon le mode
-            if (mode == CleaningMode.Complete)
+            TitleText.Text = mode switch
             {
-                TitleText.Text = "NETTOYAGE COMPLET";
-                SubtitleText.Text = "Durée estimée : 20-40 minutes";
-            }
-            else
+                CleaningMode.Complete          => "NETTOYAGE COMPLET",
+                CleaningMode.DeepClean         => "NETTOYAGE DE PRINTEMPS",
+                CleaningMode.Custom            => "NETTOYAGE PERSONNALISÉ",
+                CleaningMode.SystemOptimization=> "OPTIMISATION SYSTÈME",
+                CleaningMode.Advanced          => "MODE AVANCÉ – NETTOYAGE PROFOND",
+                _ => "NETTOYAGE EN COURS"
+            };
+            SubtitleText.Text = mode switch
             {
-                TitleText.Text = "NETTOYAGE DE PRINTEMPS";
-                SubtitleText.Text = "Durée estimée : 60-120 minutes";
-            }
+                CleaningMode.Complete          => "Durée estimée : 20-40 minutes",
+                CleaningMode.DeepClean         => "Durée estimée : 60-120 minutes",
+                CleaningMode.Custom            => $"{_engine.SelectedStepNames.Count} opération(s) sélectionnée(s)",
+                CleaningMode.SystemOptimization=> "7 étapes • Durée estimée : 30-90 minutes",
+                CleaningMode.Advanced          => "Mode complet + bloatwares + sysopt • 90-180 min",
+                _ => "Veuillez patienter..."
+            };
 
             // Démarrer le nettoyage
             Loaded += async (s, e) => await StartCleaningAsync();
