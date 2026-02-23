@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -9,9 +10,6 @@ namespace NettoyerPc.Core
 {
     public class UpdateManager
     {
-        // Utiliser AppConstants pour la configuration GitHub
-        private const string ApiUrl = "https://api.github.com/repos/klaivertt/Cleanner-window/releases/latest";
-
         // Version actuelle (synchronized avec AppConstants)
         public static readonly Version CurrentVersion = AppConstants.VersionNumber;
 
@@ -28,7 +26,7 @@ namespace NettoyerPc.Core
                 using var client = new HttpClient();
                 client.DefaultRequestHeaders.Add("User-Agent", $"{AppConstants.AppName}/{AppConstants.AppVersion}");
 
-                var response = await client.GetAsync(ApiUrl);
+                var response = await client.GetAsync(AppConstants.GitHubApiUrl);
                 if (!response.IsSuccessStatusCode)
                 {
                     progress?.Invoke("Erreur : impossible de contacter GitHub");
@@ -39,32 +37,32 @@ namespace NettoyerPc.Core
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
 
-                // Récupérer le tag version
+                // Récupérer le tag version (ex: "v0.2.0")
                 var tagName = root.GetProperty("tag_name").GetString() ?? "v0.0.0";
                 var tag = ParseVersionTag(tagName);
 
-                if (tag == null || tag <= CurrentVersion)
+                if (tag == null || CompareVersions(tag, CurrentVersion) <= 0)
                 {
                     progress?.Invoke("Vous avez la dernière version");
                     return null;
                 }
 
-                // Récupérer l'URL de téléchargement (chercher l'asset .exe)
+                // Chercher l'asset ZIP (ex: "PC.Clean.V-0.2.0-Beta.zip")
                 var assetsEl = root.GetProperty("assets");
-                string? exeUrl = null;
+                string? zipUrl = null;
                 foreach (var assetEl in assetsEl.EnumerateArray())
                 {
                     var name = assetEl.GetProperty("name").GetString() ?? "";
-                    if (name.EndsWith(".exe"))
+                    if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                     {
-                        exeUrl = assetEl.GetProperty("browser_download_url").GetString();
+                        zipUrl = assetEl.GetProperty("browser_download_url").GetString();
                         break;
                     }
                 }
 
-                if (exeUrl == null)
+                if (zipUrl == null)
                 {
-                    progress?.Invoke("Aucun exe trouvé dans la release");
+                    progress?.Invoke("Aucun fichier ZIP trouvé dans la release");
                     return null;
                 }
 
@@ -72,7 +70,7 @@ namespace NettoyerPc.Core
                 var publishedAt = root.GetProperty("published_at").GetDateTime();
 
                 progress?.Invoke($"Nouvelle version disponible : {tag}");
-                return new UpdateInfo(tag, exeUrl, changelog, publishedAt);
+                return new UpdateInfo(tag, zipUrl, changelog, publishedAt);
             }
             catch (Exception ex)
             {
@@ -81,50 +79,107 @@ namespace NettoyerPc.Core
             }
         }
 
-        /// <summary>Télécharge la nouvelle version et l'installe.</summary>
+        /// <summary>Télécharge le ZIP, l'extrait, et lance un script PowerShell d'auto-remplacement.</summary>
         public static async Task<bool> DownloadAndInstallAsync(UpdateInfo info, Action<int>? progressPercent = null)
         {
+            var tempZip        = Path.Combine(Path.GetTempPath(), "PCClean_update.zip");
+            var tempExtractDir = Path.Combine(Path.GetTempPath(), "PCClean_update_extract");
+
             try
             {
                 using var client = new HttpClient();
-                using var response = await client.GetAsync(info.DownloadUrl);
+                progressPercent?.Invoke(10);
+
+                var response = await client.GetAsync(info.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode();
 
-                var exeName = Path.GetFileNameWithoutExtension(Process.GetCurrentProcess().MainModule?.FileName) + ".exe";
-                var tempExe = Path.Combine(Path.GetTempPath(), exeName);
+                // ── Téléchargement avec progression ──────────────────────────────────
+                var totalBytes = response.Content.Headers.ContentLength ?? 0L;
+                await using (var fs = new FileStream(tempZip, FileMode.Create, FileAccess.Write))
+                await using (var stream = await response.Content.ReadAsStreamAsync())
+                {
+                    var buffer     = new byte[81920];
+                    long downloaded = 0;
+                    int  read;
+                    while ((read = await stream.ReadAsync(buffer)) > 0)
+                    {
+                        await fs.WriteAsync(buffer.AsMemory(0, read));
+                        downloaded += read;
+                        if (totalBytes > 0)
+                            progressPercent?.Invoke(Math.Min(75, (int)(10 + downloaded * 65 / totalBytes)));
+                    }
+                }
 
-                progressPercent?.Invoke(50);
+                progressPercent?.Invoke(78);
 
-                var content = await response.Content.ReadAsByteArrayAsync();
-                await File.WriteAllBytesAsync(tempExe, content);
+                // ── Extraction ───────────────────────────────────────────────────────
+                if (Directory.Exists(tempExtractDir))
+                    Directory.Delete(tempExtractDir, recursive: true);
+                ZipFile.ExtractToDirectory(tempZip, tempExtractDir);
 
-                progressPercent?.Invoke(100);
+                progressPercent?.Invoke(88);
 
-                // Créer un script batch pour remplacer l'exe au prochain démarrage
+                // Si le ZIP contient un unique sous-dossier, descendre dedans
+                var sourceDir = tempExtractDir;
+                var entries = Directory.GetFileSystemEntries(tempExtractDir);
+                if (entries.Length == 1 && Directory.Exists(entries[0]))
+                    sourceDir = entries[0];
+
                 var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
                 if (currentExe == null) return false;
 
-                var batScript = Path.Combine(Path.GetTempPath(), "update_install.bat");
-                var batContent = $@"
-@echo off
-timeout /t 2 /nobreak
-taskkill /IM {Path.GetFileName(currentExe)} /F 2>nul
-timeout /t 1 /nobreak
-copy ""{tempExe}"" ""{currentExe}"" /y
-start """" ""{currentExe}""
-del ""{batScript}""
-exit /b 0
-";
-                await File.WriteAllTextAsync(batScript, batContent);
+                var appDir  = Path.GetDirectoryName(currentExe)!;
+                var exeName = Path.GetFileName(currentExe);
 
-                // Lancer le script et fermer l'app
+                // ── Script PowerShell d'auto-remplacement ────────────────────────────
+                var ps1Path = Path.Combine(Path.GetTempPath(), "PCClean_update.ps1");
+
+                // Escape single-quotes for PS string literals
+                var srcEsc  = sourceDir.Replace("'", "''");
+                var dstEsc  = appDir.Replace("'", "''");
+                var zipEsc  = tempZip.Replace("'", "''");
+                var extEsc  = tempExtractDir.Replace("'", "''");
+                var ps1Esc  = ps1Path.Replace("'", "''");
+                var exeEsc  = exeName.Replace("'", "''");
+
+                var ps1 = $@"
+Start-Sleep -Seconds 2
+$procName = [System.IO.Path]::GetFileNameWithoutExtension('{exeEsc}')
+Get-Process -Name $procName -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 1
+
+$src = '{srcEsc}'
+$dst = '{dstEsc}'
+
+Get-ChildItem -Path $src -Recurse | ForEach-Object {{
+    $rel    = $_.FullName.Substring($src.Length).TrimStart([char]'\', [char]'/')
+    $target = Join-Path $dst $rel
+    if ($_.PSIsContainer) {{
+        if (-not (Test-Path $target)) {{ New-Item -ItemType Directory -Path $target | Out-Null }}
+    }} else {{
+        $targetDir = Split-Path $target -Parent
+        if (-not (Test-Path $targetDir)) {{ New-Item -ItemType Directory -Path $targetDir | Out-Null }}
+        Copy-Item -Path $_.FullName -Destination $target -Force
+    }}
+}}
+
+Start-Process -FilePath (Join-Path $dst '{exeEsc}')
+
+Remove-Item -Path '{zipEsc}'  -Force              -ErrorAction SilentlyContinue
+Remove-Item -Path '{extEsc}'  -Recurse -Force     -ErrorAction SilentlyContinue
+Remove-Item -Path '{ps1Esc}'  -Force              -ErrorAction SilentlyContinue
+";
+                await File.WriteAllTextAsync(ps1Path, ps1.TrimStart());
+
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = batScript,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    FileName  = "powershell.exe",
+                    Arguments = $"-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File \"{ps1Path}\"",
+                    UseShellExecute  = false,
+                    CreateNoWindow   = true
                 });
 
+                progressPercent?.Invoke(100);
                 return true;
             }
             catch (Exception ex)
@@ -134,18 +189,34 @@ exit /b 0
             }
         }
 
-        /// <summary>Parse un tag version comme "v2.0.1" ou "2.0.1".</summary>
+        /// <summary>
+        /// Parse "v0.2.0" ou "v0.2.0-beta" → Version(0,2,0).
+        /// Les suffixes pre-release (-beta, -alpha, etc.) sont ignorés.
+        /// </summary>
         private static Version? ParseVersionTag(string tag)
         {
             try
             {
-                var cleanTag = tag.TrimStart('v', 'V');
-                return Version.Parse(cleanTag);
+                var clean = tag.TrimStart('v', 'V');
+                var dashIdx = clean.IndexOf('-');
+                if (dashIdx > 0) clean = clean[..dashIdx];
+                return Version.Parse(clean);
             }
             catch
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Compare deux versions en normalisant Revision=-1 à 0,
+        /// afin d'éviter que "0.2.0" soit jugé inférieur à "0.2.0.0".
+        /// </summary>
+        private static int CompareVersions(Version a, Version b)
+        {
+            var aNorm = new Version(a.Major, a.Minor, Math.Max(a.Build, 0), Math.Max(a.Revision, 0));
+            var bNorm = new Version(b.Major, b.Minor, Math.Max(b.Build, 0), Math.Max(b.Revision, 0));
+            return aNorm.CompareTo(bNorm);
         }
     }
 }
