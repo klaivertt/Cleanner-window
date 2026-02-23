@@ -42,10 +42,13 @@ namespace NettoyerPc
             ["Suppression Thumbnails"]                 = ("Supprime le cache de miniatures de l Explorateur. Se recree en quelques secondes en parcourant vos dossiers.", "100% sur", true),
 
             // Navigateurs
+            ["Fermeture navigateurs ouverts"]       = ("Ferme de force Chrome, Firefox, Edge, Brave, Vivaldi, Opera et Opera GX pour permettre la suppression de leurs fichiers verrous.", "100% sur", true),
             ["Nettoyage Firefox"]                      = ("Supprime le cache de Firefox (images, JS, CSS mis en cache). Vos favoris, mots de passe et historique sont conserves.", "100% sur", true),
-            ["Nettoyage Chrome"]                       = ("Cache Chrome uniquement. Vos favoris, extensions et mots de passe ne sont pas touches.", "100% sur", true),
-            ["Nettoyage Edge"]                         = ("Cache Edge uniquement. Favoris et mots de passe conserves.", "100% sur", true),
-            ["Nettoyage Brave/Opera"]                  = ("Cache Brave et Opera. Donnees de navigation conservees.", "100% sur", true),
+            ["Nettoyage Chrome"]                       = ("Cache Chrome + tous les profils utilisateur. Vos favoris, extensions et mots de passe ne sont pas touches.", "100% sur", true),
+            ["Nettoyage Edge"]                         = ("Cache Edge uniquement + tous les profils. Favoris et mots de passe conserves.", "100% sur", true),
+            ["Nettoyage Brave"]                        = ("Cache Brave. Historique et mots de passe conserves.", "100% sur", true),
+            ["Nettoyage Opera / Opera GX"]             = ("Cache Opera Stable et Opera GX. Les deux versions sont nettoyees.", "100% sur", true),
+            ["Nettoyage Vivaldi"]                      = ("Cache Vivaldi. Donnees de navigation conservees.", "100% sur", true),
 
             // Gaming
             ["Steam cache (tous disques)"]             = ("Supprime le cache HTTP/appcache de Steam. Se recharge automatiquement. Vos jeux, saves et parametres ne sont pas touches.", "100% sur", true),

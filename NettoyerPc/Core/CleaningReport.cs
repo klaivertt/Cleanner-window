@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 
 namespace NettoyerPc.Core
 {
@@ -69,21 +70,48 @@ namespace NettoyerPc.Core
         public void SaveReport(string directory)
         {
             var fileName = $"CleanerReport_{StartTime:yyyy-MM-dd_HH-mm-ss}.txt";
-            var filePath = Path.Combine(directory, fileName);
-            File.WriteAllText(filePath, GenerateReport());
+            File.WriteAllText(Path.Combine(directory, fileName), GenerateReport());
         }
 
-        private static string FormatBytes(long bytes)
+        public void SaveReportJson(string directory)
+        {
+            var dto = new
+            {
+                version      = "2.0",
+                startTime    = StartTime,
+                endTime      = EndTime,
+                durationSeconds = TotalDuration.TotalSeconds,
+                machineName  = MachineName,
+                userName     = UserName,
+                totalFilesDeleted = TotalFilesDeleted,
+                totalSpaceFreed   = TotalSpaceFreed,
+                threatsFound = ThreatsFound,
+                rebootRequired = RebootRequired,
+                steps = Steps.Select(s => new
+                {
+                    name            = s.Name,
+                    category        = s.Category,
+                    status          = s.Status,
+                    durationSeconds = s.Duration.TotalSeconds,
+                    filesDeleted    = s.FilesDeleted,
+                    spaceFreed      = s.SpaceFreed,
+                    hasError        = s.HasError,
+                    errorMessage    = s.ErrorMessage
+                }).ToList()
+            };
+            var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
+            var fileName = $"CleanerReport_{StartTime:yyyy-MM-dd_HH-mm-ss}.json";
+            File.WriteAllText(Path.Combine(directory, fileName), json);
+        }
+
+        public static string FormatBytes(long bytes)
         {
             string[] sizes = { "B", "KB", "MB", "GB", "TB" };
             double len = bytes;
             int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len /= 1024;
-            }
+            while (len >= 1024 && order < sizes.Length - 1) { order++; len /= 1024; }
             return $"{len:0.##} {sizes[order]}";
         }
+
     }
 }

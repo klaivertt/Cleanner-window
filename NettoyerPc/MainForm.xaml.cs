@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
 using System.Windows;
 
 namespace NettoyerPc
@@ -11,30 +14,64 @@ namespace NettoyerPc
         public MainForm()
         {
             InitializeComponent();
+            Loaded += (s, e) => LoadLastReportStats();
+        }
+
+        private void LoadLastReportStats()
+        {
+            try
+            {
+                var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+                var latest = Directory.Exists(reportDir)
+                    ? Directory.GetFiles(reportDir, "*.json").OrderByDescending(f => f).FirstOrDefault()
+                    : null;
+
+                if (latest != null)
+                {
+                    using var doc = JsonDocument.Parse(File.ReadAllText(latest));
+                    var root = doc.RootElement;
+                    var date  = root.GetProperty("startTime").GetDateTime();
+                    var space = root.GetProperty("totalSpaceFreed").GetInt64();
+                    var files = root.GetProperty("totalFilesDeleted").GetInt32();
+                    TxtLastCleanup.Text = $"Dernier nettoyage : {date:dd/MM/yyyy à HH:mm}  |  {Core.CleaningReport.FormatBytes(space)} liberes  |  {files:N0} fichiers";
+
+                    var count = Directory.GetFiles(reportDir, "*.json").Length;
+                    BtnReports.Content = $"Rapports ({count})";
+                }
+            }
+            catch { /* ignore — pas de rapport */ }
         }
 
         private void BtnComplete_Click(object sender, RoutedEventArgs e)
         {
+            OfferForceClose(new[] { "firefox", "chrome", "msedge", "brave", "opera", "vivaldi" });
             LaunchCleaning(Core.CleaningMode.Complete);
         }
 
         private void BtnDeepClean_Click(object sender, RoutedEventArgs e)
         {
-            if (Confirm(
-                "ðŸ”¥ NETTOYAGE DE PRINTEMPS\n\n" +
+            if (!Confirm(
+                "NETTOYAGE DE PRINTEMPS\n\n" +
                 "Ce nettoyage inclut :\n" +
-                "  â€¢ Tout le nettoyage rapide\n" +
-                "  â€¢ Suppression des caches dÃ©veloppeur (npm, pip, gradle, NuGet)\n" +
-                "  â€¢ Cache Windows Update (anciens fichiers)\n" +
-                "  â€¢ DÃ©fragmentation et DISM\n\n" +
-                "â„¹ Les caches dev (npm, pip...) se re-tÃ©lÃ©chargeront au prochain build.\n" +
-                "âœ… Un point de restauration sera crÃ©Ã© automatiquement avant de commencer.\n\n" +
-                "DurÃ©e : 60-120 minutes. Continuer ?"))
-                LaunchCleaning(Core.CleaningMode.DeepClean);
+                "  - Tout le nettoyage rapide\n" +
+                "  - Caches developpeur (npm, pip, gradle, NuGet)\n" +
+                "  - Cache Windows Update (anciens fichiers)\n" +
+                "  - Defragmentation et DISM\n" +
+                "  - Navigateurs (Chrome, Firefox, Edge, Brave, Vivaldi, Opera GX)\n\n" +
+                "Les caches dev (npm, pip...) se re-telechargeront au prochain build.\n" +
+                "Un point de restauration sera cree automatiquement.\n\n" +
+                "Duree : 60-120 minutes. Continuer ?"))
+                return;
+
+            OfferForceClose();
+            LaunchCleaning(Core.CleaningMode.DeepClean);
         }
 
         private void BtnGamingDisk_Click(object sender, RoutedEventArgs e)
         {
+            OfferForceClose(new[] { "steam", "steamwebhelper", "EpicGamesLauncher",
+                "discord", "spotify", "obs64", "chrome", "firefox", "msedge", "brave" });
+
             LaunchCleaningCustomModules(new HashSet<string>
             {
                 // Caches gaming (100% sÃ»r - se recrÃ©e)
@@ -63,16 +100,19 @@ namespace NettoyerPc
 
         private void BtnAdvanced_Click(object sender, RoutedEventArgs e)
         {
-            if (Confirm(
-                "âš  MODE AVANCÃ‰ â€“ NETTOYAGE PROFOND\n\n" +
+            if (!Confirm(
+                "MODE AVANCE - NETTOYAGE PROFOND\n\n" +
                 "Ce mode inclut absolument tout :\n" +
-                "  â€¢ Nettoyage complet + gaming + apps tierces\n" +
-                "  â€¢ Optimisation systÃ¨me (SFC, DISM, rÃ©seau)\n" +
-                "  â€¢ Suppression bloatwares Windows\n" +
-                "  â€¢ CrÃ©ation point de restauration automatique\n\n" +
-                "DurÃ©e estimÃ©e : 90-180 minutes\n\n" +
+                "  - Nettoyage complet + gaming + apps tierces\n" +
+                "  - Optimisation systeme (SFC, DISM, reseau)\n" +
+                "  - Suppression bloatwares Windows\n" +
+                "  - Creation point de restauration automatique\n\n" +
+                "Duree estimee : 90-180 minutes\n\n" +
                 "Continuer ?"))
-                LaunchCleaning(Core.CleaningMode.Advanced);
+                return;
+
+            OfferForceClose();
+            LaunchCleaning(Core.CleaningMode.Advanced);
         }
 
         private void BtnSysOpt_Click(object sender, RoutedEventArgs e)
@@ -169,6 +209,34 @@ namespace NettoyerPc
         {
             return MessageBox.Show(message, "Confirmation",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+        }
+
+        /// <summary>
+        /// Propose de fermer les applications qui pourraient verrouiller des fichiers.
+        /// Si <paramref name="processNames"/> est null, utilise la liste complete.
+        /// </summary>
+        private static void OfferForceClose(IEnumerable<string>? processNames = null)
+        {
+            var running = processNames == null
+                ? Core.ProcessHelper.GetRunningApps()
+                : processNames
+                    .Where(n => System.Diagnostics.Process.GetProcessesByName(n).Any())
+                    .ToList();
+
+            if (running.Count == 0) return;
+
+            var list = string.Join("\n", running.Take(10).Select(n => $"  - {n}"));
+            var msg  = $"Les applications suivantes sont ouvertes :\n\n{list}\n\n" +
+                       "Les fermer maintenant pour un nettoyage plus complet ?\n" +
+                       "(Vous pourrez les rouvrir apres le nettoyage)";
+
+            var result = MessageBox.Show(msg, "Applications ouvertes",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result == MessageBoxResult.Yes)
+            {
+                Core.ProcessHelper.KillApps(running);
+                System.Threading.Thread.Sleep(600);
+            }
         }
     }
 }

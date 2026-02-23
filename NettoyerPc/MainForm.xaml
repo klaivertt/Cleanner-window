@@ -311,6 +311,7 @@
         <Border Grid.Row="3" Background="#12121F" BorderBrush="#2A2A3E" BorderThickness="0,1,0,0" Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -319,7 +320,10 @@
                     <TextBlock x:Name="TxtAdminStatus" Text="Droits administrateur actifs"
                                Foreground="#4EC98C" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Grid.Column="1" Text="Nettoyeur PC 2000  v2.0"
+                <TextBlock x:Name="TxtLastCleanup" Grid.Column="1"
+                           Foreground="#555" FontSize="11" VerticalAlignment="Center"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="Nettoyeur PC 2000  v2.0"
                            Foreground="#444" FontSize="11" VerticalAlignment="Center"/>
             </Grid>
         </Border>

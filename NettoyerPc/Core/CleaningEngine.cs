@@ -122,6 +122,7 @@ namespace NettoyerPc.Core
                 var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
                 Directory.CreateDirectory(reportDir);
                 Report.SaveReport(reportDir);
+                Report.SaveReportJson(reportDir);
                 LogMessage?.Invoke($"Nettoyage terminé — {Report.TotalFilesDeleted} fichiers, {FormatBytes(Report.TotalSpaceFreed)} libérés");
             }
             catch (Exception ex)

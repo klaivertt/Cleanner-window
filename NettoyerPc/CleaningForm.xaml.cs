@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -15,59 +15,65 @@ namespace NettoyerPc
     public partial class CleaningForm : Window
     {
         private readonly CleaningEngine _engine;
-        private readonly CleaningMode _mode;
+        private readonly CleaningMode   _mode;
         private readonly DispatcherTimer _timer;
-        private readonly Stopwatch _stopwatch;
+        private readonly Stopwatch       _stopwatch;
         private bool _isCompleted = false;
-        private readonly Dictionary<CleaningStep, Border> _stepUI = new();
+        private int  _stepsTotal  = 0;
+        private int  _stepsOk     = 0;
+
+        // step -> (border, titleBlock, statusBlock)
+        private readonly Dictionary<CleaningStep, (Border B, TextBlock T, TextBlock S)> _stepUI = new();
+
+        // Couleurs de catégorie
+        private static readonly Dictionary<string, string> CatBorderHex = new()
+        {
+            ["general"]    = "#1A6B3A", ["browser"]    = "#1A4B3A",
+            ["gaming"]     = "#3B1E6E", ["thirdparty"] = "#1A3A5A",
+            ["network"]    = "#1A4A2A", ["windows"]    = "#1A4B6B",
+            ["dev"]        = "#4B4B1A", ["sysopt"]     = "#1A3A6B",
+            ["security"]   = "#1A3A6B", ["advanced"]   = "#4A2A00",
+            ["bloatware"]  = "#6B2A00",
+        };
 
         public CleaningForm(CleaningMode mode, HashSet<string>? customSteps = null)
         {
             InitializeComponent();
-
-            _mode = mode;
-            _engine = new CleaningEngine();
+            _mode      = mode;
+            _engine    = new CleaningEngine();
             _stopwatch = new Stopwatch();
 
-            // Appliquer les étapes personnalisées si fourni
             if (customSteps != null)
                 foreach (var s in customSteps)
                     _engine.SelectedStepNames.Add(s);
 
-            // Timer pour mettre à jour le temps écoulé
-            _timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += Timer_Tick;
 
-            // Abonnement aux événements
-            _engine.StepStarted += Engine_StepStarted;
-            _engine.StepCompleted += Engine_StepCompleted;
-            _engine.LogMessage += Engine_LogMessage;
-            _engine.ProgressChanged += Engine_ProgressChanged;
+            _engine.StepStarted    += Engine_StepStarted;
+            _engine.StepCompleted  += Engine_StepCompleted;
+            _engine.LogMessage     += Engine_LogMessage;
+            _engine.ProgressChanged+= Engine_ProgressChanged;
 
-            // Configuration de l'interface selon le mode
             TitleText.Text = mode switch
             {
-                CleaningMode.Complete          => "NETTOYAGE COMPLET",
+                CleaningMode.Complete          => "NETTOYAGE RAPIDE",
                 CleaningMode.DeepClean         => "NETTOYAGE DE PRINTEMPS",
-                CleaningMode.Custom            => "NETTOYAGE PERSONNALISÉ",
-                CleaningMode.SystemOptimization=> "OPTIMISATION SYSTÈME",
-                CleaningMode.Advanced          => "MODE AVANCÉ – NETTOYAGE PROFOND",
+                CleaningMode.Custom            => "NETTOYAGE PERSONNALISE",
+                CleaningMode.SystemOptimization=> "OPTIMISATION SYSTEME",
+                CleaningMode.Advanced          => "MODE AVANCE",
                 _ => "NETTOYAGE EN COURS"
             };
             SubtitleText.Text = mode switch
             {
-                CleaningMode.Complete          => "Durée estimée : 20-40 minutes",
-                CleaningMode.DeepClean         => "Durée estimée : 60-120 minutes",
-                CleaningMode.Custom            => $"{_engine.SelectedStepNames.Count} opération(s) sélectionnée(s)",
-                CleaningMode.SystemOptimization=> "7 étapes • Durée estimée : 30-90 minutes",
-                CleaningMode.Advanced          => "Mode complet + bloatwares + sysopt • 90-180 min",
+                CleaningMode.Complete          => "Duree estimee : 20-40 minutes",
+                CleaningMode.DeepClean         => "Duree estimee : 60-120 minutes",
+                CleaningMode.Custom            => $"{_engine.SelectedStepNames.Count} operation(s) selectionnee(s)",
+                CleaningMode.SystemOptimization=> "7 etapes — SFC / DISM / reseau / disque",
+                CleaningMode.Advanced          => "Mode complet + bloatwares + sysopt",
                 _ => "Veuillez patienter..."
             };
 
-            // Démarrer le nettoyage
             Loaded += async (s, e) => await StartCleaningAsync();
         }
 
@@ -75,40 +81,30 @@ namespace NettoyerPc
         {
             _stopwatch.Start();
             _timer.Start();
-
-            AddLog("=== DÉBUT DU NETTOYAGE ===");
-            AddLog($"Mode: {(_mode == CleaningMode.Complete ? "Complet" : "De printemps")}");
-            AddLog($"Date: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+            AddLog("=== DEBUT DU NETTOYAGE ===");
+            AddLog($"Mode : {_mode}  |  {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
             AddLog("");
 
             try
             {
-                var progress = new Progress<int>(percent =>
+                var progress = new Progress<int>(pct => Dispatcher.Invoke(() =>
                 {
-                    Dispatcher.Invoke(() =>
-                    {
-                        GlobalProgress.Value = percent;
-                        ProgressPercent.Text = $"{percent}%";
-                    });
-                });
+                    GlobalProgress.Value  = pct;
+                    ProgressPercent.Text  = $"{pct}%";
+                }));
 
                 var report = await _engine.RunCleaningAsync(_mode, progress);
 
                 _stopwatch.Stop();
                 _timer.Stop();
                 _isCompleted = true;
-
-                // Afficher le résumé
                 ShowSummary(report);
             }
             catch (Exception ex)
             {
-                AddLog($"ERREUR CRITIQUE: {ex.Message}");
-                MessageBox.Show(
-                    $"Une erreur s'est produite:\n{ex.Message}",
-                    "Erreur",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                AddLog($"ERREUR CRITIQUE : {ex.Message}");
+                MessageBox.Show($"Une erreur s'est produite :\n{ex.Message}", "Erreur",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 Close();
             }
         }
@@ -117,43 +113,58 @@ namespace NettoyerPc
         {
             Dispatcher.Invoke(() =>
             {
-                // Créer l'UI pour l'étape
-                var border = new Border
-                {
-                    Background = new SolidColorBrush(Color.FromRgb(248, 248, 248)),
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(200, 200, 200)),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(4),
-                    Margin = new Thickness(0, 0, 0, 10),
-                    Padding = new Thickness(15)
-                };
+                _stepsTotal++;
+                StepsOkText.Text = $"{_stepsOk} / {_stepsTotal}";
 
-                var stackPanel = new StackPanel();
+                var catHex    = CatBorderHex.TryGetValue(step.Category ?? "general", out var h) ? h : "#2A2A3E";
+                var catBrush  = (SolidColorBrush)new BrushConverter().ConvertFrom(catHex)!;
 
                 var titleBlock = new TextBlock
                 {
-                    Text = $"▶ {step.Name}",
-                    FontSize = 14,
+                    Text       = $"  {step.Name}",
+                    FontSize   = 13,
                     FontWeight = FontWeights.SemiBold,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0, 120, 215))
+                    Foreground = new SolidColorBrush(Color.FromRgb(100, 180, 255)),
+                    Margin     = new Thickness(0, 0, 0, 4)
                 };
-
                 var statusBlock = new TextBlock
                 {
-                    Text = step.Status,
-                    FontSize = 12,
-                    Foreground = new SolidColorBrush(Color.FromRgb(102, 102, 102)),
-                    Margin = new Thickness(0, 5, 0, 0)
+                    Text       = "En cours...",
+                    FontSize   = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 140))
+                };
+                var indicator = new Border
+                {
+                    Width          = 4,
+                    Background     = catBrush,
+                    CornerRadius   = new CornerRadius(2, 0, 0, 2),
+                    Margin         = new Thickness(0, 0, 12, 0)
                 };
 
-                stackPanel.Children.Add(titleBlock);
-                stackPanel.Children.Add(statusBlock);
-                border.Child = stackPanel;
+                var rowGrid = new Grid();
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var sp = new StackPanel(); sp.Children.Add(titleBlock); sp.Children.Add(statusBlock);
+                Grid.SetColumn(indicator, 0); Grid.SetColumn(sp, 1);
+                rowGrid.Children.Add(indicator); rowGrid.Children.Add(sp);
+
+                var border = new Border
+                {
+                    Background      = new SolidColorBrush(Color.FromRgb(26, 26, 45)),
+                    BorderBrush     = catBrush,
+                    BorderThickness = new Thickness(1),
+                    CornerRadius    = new CornerRadius(6),
+                    Margin          = new Thickness(0, 0, 0, 6),
+                    Padding         = new Thickness(0, 10, 14, 10),
+                    Child           = rowGrid
+                };
 
                 StepsPanel.Children.Add(border);
-                _stepUI[step] = border;
+                _stepUI[step] = (border, titleBlock, statusBlock);
+                ProgressText.Text = step.Name;
 
-                ProgressText.Text = $"En cours : {step.Name}";
+                // Auto-scroll
+                StepsScrollViewer.ScrollToEnd();
             });
         }
 
@@ -161,137 +172,136 @@ namespace NettoyerPc
         {
             Dispatcher.Invoke(() =>
             {
-                if (_stepUI.TryGetValue(step, out var border))
-                {
-                    var stackPanel = (StackPanel)border.Child;
-                    var titleBlock = (TextBlock)stackPanel.Children[0];
-                    var statusBlock = (TextBlock)stackPanel.Children[1];
+                if (!_stepUI.TryGetValue(step, out var ui)) return;
+                var (border, title, status) = ui;
 
-                    if (step.HasError)
-                    {
-                        titleBlock.Text = $"❌ {step.Name}";
-                        titleBlock.Foreground = new SolidColorBrush(Color.FromRgb(209, 52, 56));
-                        statusBlock.Text = $"Erreur: {step.ErrorMessage}";
-                        border.Background = new SolidColorBrush(Color.FromRgb(255, 240, 240));
-                    }
-                    else
-                    {
-                        titleBlock.Text = $"✅ {step.Name}";
-                        titleBlock.Foreground = new SolidColorBrush(Color.FromRgb(16, 124, 16));
-                        statusBlock.Text = $"Terminé - {step.FilesDeleted} fichiers - {FormatBytes(step.SpaceFreed)} - {step.Duration.TotalSeconds:F1}s";
-                        border.Background = new SolidColorBrush(Color.FromRgb(240, 255, 240));
-                    }
+                if (step.HasError)
+                {
+                    title.Text       = $"  {step.Name}";
+                    title.Foreground = new SolidColorBrush(Color.FromRgb(255, 80, 80));
+                    status.Text      = $"ERREUR : {step.ErrorMessage}";
+                    status.Foreground= new SolidColorBrush(Color.FromRgb(200, 80, 80));
+                    border.BorderBrush = new SolidColorBrush(Color.FromRgb(140, 30, 30));
+                    border.Background  = new SolidColorBrush(Color.FromRgb(35, 18, 18));
+                }
+                else
+                {
+                    _stepsOk++;
+                    title.Text       = $"  {step.Name}";
+                    title.Foreground = new SolidColorBrush(Color.FromRgb(80, 200, 120));
+                    var durStr = step.Duration.TotalMinutes >= 1
+                        ? $"{(int)step.Duration.TotalMinutes}m {step.Duration.Seconds:00}s"
+                        : $"{step.Duration.TotalSeconds:F1}s";
+                    status.Text = step.FilesDeleted > 0
+                        ? $"OK — {step.FilesDeleted:N0} fichiers  |  {FormatBytes(step.SpaceFreed)}  |  {durStr}"
+                        : $"OK — {durStr}";
+                    status.Foreground = new SolidColorBrush(Color.FromRgb(70, 180, 100));
+                    border.Background = new SolidColorBrush(Color.FromRgb(18, 30, 22));
                 }
 
-                // Mettre à jour les totaux
+                StepsOkText.Text  = $"{_stepsOk} / {_stepsTotal}";
+                ThreatsText.Text  = _engine.Report.ThreatsFound.ToString();
                 UpdateTotals();
+                StepsScrollViewer.ScrollToEnd();
             });
         }
 
-        private void Engine_LogMessage(string message)
-        {
-            AddLog(message);
-        }
+        private void Engine_LogMessage(string message) => AddLog(message);
 
-        private void Engine_ProgressChanged(int percent)
+        private void Engine_ProgressChanged(int pct)
         {
             Dispatcher.Invoke(() =>
             {
-                GlobalProgress.Value = percent;
-                ProgressPercent.Text = $"{percent}%";
+                GlobalProgress.Value = pct;
+                ProgressPercent.Text = $"{pct}%";
             });
         }
 
         private void UpdateTotals()
         {
-            var totalFiles = _engine.Steps.Sum(s => s.FilesDeleted);
-            var totalSpace = _engine.Steps.Sum(s => s.SpaceFreed);
-
-            FilesDeletedText.Text = totalFiles.ToString("N0");
-            SpaceFreedText.Text = FormatBytes(totalSpace);
+            var files = _engine.Steps.Sum(s => s.FilesDeleted);
+            var space = _engine.Steps.Sum(s => s.SpaceFreed);
+            FilesDeletedText.Text = files.ToString("N0");
+            SpaceFreedText.Text   = FormatBytes(space);
         }
 
         private void AddLog(string message)
         {
             Dispatcher.Invoke(() =>
             {
-                LogText.Text += $"[{DateTime.Now:HH:mm:ss}] {message}\n";
+                LogText.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
                 LogScrollViewer.ScrollToEnd();
             });
         }
 
         private void Timer_Tick(object? sender, EventArgs e)
         {
-            var elapsed = _stopwatch.Elapsed;
-            ElapsedTimeText.Text = $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds}s";
+            var el = _stopwatch.Elapsed;
+            ElapsedTimeText.Text = $"{(int)el.TotalMinutes}m {el.Seconds:00}s";
         }
 
         private void ShowSummary(CleaningReport report)
         {
             Dispatcher.Invoke(() =>
             {
-                TitleText.Text = "✅ NETTOYAGE TERMINÉ";
-                SubtitleText.Text = "Opération réussie !";
-                ProgressText.Text = "Terminé";
-                GlobalProgress.Value = 100;
-                ProgressPercent.Text = "100%";
+                TitleText.Text        = "NETTOYAGE TERMINE";
+                SubtitleText.Text     = $"{report.TotalFilesDeleted:N0} fichiers  |  {FormatBytes(report.TotalSpaceFreed)} liberes";
+                ProgressText.Text     = "Termine";
+                GlobalProgress.Value  = 100;
+                ProgressPercent.Text  = "100%";
+
+                UpdateTotals();
+
+                var dur = report.TotalDuration;
+                var durStr = dur.TotalMinutes >= 60
+                    ? $"{(int)dur.TotalHours}h {dur.Minutes}m"
+                    : $"{(int)dur.TotalMinutes}m {dur.Seconds}s";
 
                 AddLog("");
-                AddLog("=== RÉSUMÉ FINAL ===");
-                AddLog($"Fichiers supprimés : {report.TotalFilesDeleted}");
-                AddLog($"Espace libéré : {FormatBytes(report.TotalSpaceFreed)}");
-                AddLog($"Menaces détectées : {report.ThreatsFound}");
-                AddLog($"Durée totale : {report.TotalDuration.Hours}h {report.TotalDuration.Minutes}m {report.TotalDuration.Seconds}s");
+                AddLog("=== RESUME FINAL ===");
+                AddLog($"Fichiers supprimes  : {report.TotalFilesDeleted:N0}");
+                AddLog($"Espace libere       : {FormatBytes(report.TotalSpaceFreed)}");
+                AddLog($"Menaces detectees   : {report.ThreatsFound}");
+                AddLog($"Etapes reussies     : {_stepsOk} / {_stepsTotal}");
+                AddLog($"Duree totale        : {durStr}");
+                AddLog($"Rapport JSON sauvegarde dans : Reports/");
                 AddLog("");
 
-                var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-                AddLog($"Rapport sauvegardé dans : {reportDir}");
-
+                var ok = _stepsTotal - (_stepsTotal - _stepsOk);
                 MessageBox.Show(
-                    $"Nettoyage terminé avec succès !\n\n" +
-                    $"📁 Fichiers supprimés : {report.TotalFilesDeleted}\n" +
-                    $"💾 Espace libéré : {FormatBytes(report.TotalSpaceFreed)}\n" +
-                    $"⏱️ Durée : {report.TotalDuration.Hours}h {report.TotalDuration.Minutes}m {report.TotalDuration.Seconds}s\n\n" +
-                    $"Un rapport détaillé a été généré dans le dossier Reports.",
-                    "Nettoyage terminé",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    $"Nettoyage termine avec succes !\n\n" +
+                    $"  Espace libere    :  {FormatBytes(report.TotalSpaceFreed)}\n" +
+                    $"  Fichiers suppr.  :  {report.TotalFilesDeleted:N0}\n" +
+                    $"  Etapes reussies  :  {_stepsOk} / {_stepsTotal}\n" +
+                    $"  Duree totale     :  {durStr}\n\n" +
+                    $"Un rapport JSON detaille a ete sauvegarde dans le dossier Reports.\n" +
+                    (report.RebootRequired ? "\nUn redemarrage est recommande." : ""),
+                    "Nettoyage termine",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             });
         }
 
-        private string FormatBytes(long bytes)
+        private static string FormatBytes(long bytes)
         {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len /= 1024;
-            }
-            return $"{len:0.##} {sizes[order]}";
+            string[] sz = { "B", "KB", "MB", "GB", "TB" };
+            double v = bytes; int o = 0;
+            while (v >= 1024 && o < sz.Length - 1) { o++; v /= 1024; }
+            return $"{v:0.##} {sz[o]}";
         }
 
         private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (!_isCompleted)
+            if (_isCompleted) return;
+            if (MessageBox.Show("Le nettoyage est en cours.\nQuitter quand meme ?",
+                    "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.No)
             {
-                var result = MessageBox.Show(
-                    "Le nettoyage est en cours.\nÊtes-vous sûr de vouloir quitter ?",
-                    "Confirmation",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.No)
-                {
-                    e.Cancel = true;
-                }
-                else
-                {
-                    _engine.Cancel();
-                    _timer.Stop();
-                    _stopwatch.Stop();
-                }
+                e.Cancel = true;
+            }
+            else
+            {
+                _engine.Cancel();
+                _timer.Stop();
+                _stopwatch.Stop();
             }
         }
     }

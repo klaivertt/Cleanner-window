@@ -1,139 +1,131 @@
-<Window x:Class="NettoyerPc.CleaningForm"
+﻿<Window x:Class="NettoyerPc.CleaningForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Nettoyage en cours..." 
-        Height="700" Width="900"
+        Title="Nettoyage en cours..."
+        Height="780" Width="960"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="#F5F5F5"
+        Background="#1E1E2E"
         Closing="Window_Closing">
-    
+
+    <Window.Resources>
+        <Style x:Key="StatLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style x:Key="StatValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="160"/>
         </Grid.RowDefinitions>
 
-        <!-- En-tête -->
-        <Border Grid.Row="0" Background="#0078D7" Padding="20">
-            <StackPanel>
-                <TextBlock x:Name="TitleText" 
-                          Text="NETTOYAGE EN COURS" 
-                          FontSize="28" 
-                          FontWeight="Bold" 
-                          Foreground="White"
-                          HorizontalAlignment="Center"/>
-                <TextBlock x:Name="SubtitleText"
-                          Text="Veuillez patienter..." 
-                          FontSize="14" 
-                          Foreground="White"
-                          HorizontalAlignment="Center"
-                          Margin="0,5,0,0"/>
-            </StackPanel>
+        <!-- EN-TETE -->
+        <Border Grid.Row="0" Background="#12121F" Padding="28,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="TitleText" Text="NETTOYAGE EN COURS"
+                               FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock x:Name="SubtitleText" Text="Veuillez patienter..."
+                               FontSize="13" Foreground="#888" Margin="0,4,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock x:Name="ProgressPercent" Text="0%"
+                               FontSize="36" FontWeight="Bold" Foreground="#4AACFF"
+                               HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="ElapsedTimeText" Text="0m 0s"
+                               FontSize="12" Foreground="#666" HorizontalAlignment="Right"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
-        <!-- Zone de progression -->
-        <ScrollViewer Grid.Row="1" 
-                     VerticalScrollBarVisibility="Auto"
-                     Margin="20">
-            <StackPanel x:Name="StepsPanel">
-                <!-- Les étapes seront ajoutées dynamiquement ici -->
-            </StackPanel>
+        <!-- LISTE ETAPES -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                      Background="#1E1E2E" x:Name="StepsScrollViewer"
+                      Padding="20,12,20,0">
+            <StackPanel x:Name="StepsPanel"/>
         </ScrollViewer>
 
-        <!-- Barre de progression globale -->
-        <Border Grid.Row="2" 
-               Background="White" 
-               BorderBrush="#CCCCCC" 
-               BorderThickness="0,1,0,1"
-               Padding="20">
+        <!-- BARRE PROGRESSION + STATS -->
+        <Border Grid.Row="2" Background="#12121F" BorderBrush="#2A2A3E"
+                BorderThickness="0,1,0,1" Padding="24,16">
             <StackPanel>
-                <Grid Margin="0,0,0,10">
-                    <TextBlock x:Name="ProgressText" 
-                              Text="Préparation..." 
-                              FontSize="14"
-                              FontWeight="SemiBold"/>
-                    <TextBlock x:Name="ProgressPercent" 
-                              Text="0%" 
-                              FontSize="14"
-                              FontWeight="Bold"
-                              HorizontalAlignment="Right"/>
+                <!-- Barre -->
+                <Grid Margin="0,0,0,6">
+                    <TextBlock x:Name="ProgressText" Text="Preparation..."
+                               FontSize="12" FontWeight="SemiBold" Foreground="#AAAACC"
+                               VerticalAlignment="Center"/>
                 </Grid>
-                
-                <ProgressBar x:Name="GlobalProgress" 
-                            Height="30" 
-                            Minimum="0" 
-                            Maximum="100" 
-                            Value="0"/>
-                
-                <Grid Margin="0,10,0,0">
+                <ProgressBar x:Name="GlobalProgress" Height="8" Minimum="0" Maximum="100" Value="0"
+                             Foreground="#4AACFF" Background="#2A2A3E" BorderThickness="0"/>
+
+                <!-- 4 STAT CARDS -->
+                <Grid Margin="0,16,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Fichiers supprimés" 
-                                  FontSize="11" 
-                                  Foreground="#666"/>
-                        <TextBlock x:Name="FilesDeletedText" 
-                                  Text="0" 
-                                  FontSize="18" 
-                                  FontWeight="Bold"
-                                  Foreground="#0078D7"/>
-                    </StackPanel>
-                    
-                    <StackPanel Grid.Column="1">
-                        <TextBlock Text="Espace libéré" 
-                                  FontSize="11" 
-                                  Foreground="#666"/>
-                        <TextBlock x:Name="SpaceFreedText" 
-                                  Text="0 MB" 
-                                  FontSize="18" 
-                                  FontWeight="Bold"
-                                  Foreground="#107C10"/>
-                    </StackPanel>
-                    
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="Temps écoulé" 
-                                  FontSize="11" 
-                                  Foreground="#666"/>
-                        <TextBlock x:Name="ElapsedTimeText" 
-                                  Text="0m 0s" 
-                                  FontSize="18" 
-                                  FontWeight="Bold"
-                                  Foreground="#D13438"/>
-                    </StackPanel>
+
+                    <Border Grid.Column="0" Background="#0D2A1A" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource StatLabel}" Text="ESPACE LIBERE" Foreground="#4EC98C"/>
+                            <TextBlock x:Name="SpaceFreedText" Style="{StaticResource StatValue}" Text="0 B" Foreground="#5AE896"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Background="#0D1F3C" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource StatLabel}" Text="FICHIERS SUPPRIMES" Foreground="#4AACFF"/>
+                            <TextBlock x:Name="FilesDeletedText" Style="{StaticResource StatValue}" Text="0" Foreground="#6BBBFF"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Background="#2A1A00" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource StatLabel}" Text="ETAPES OK" Foreground="#FFB830"/>
+                            <TextBlock x:Name="StepsOkText" Style="{StaticResource StatValue}" Text="0 / 0" Foreground="#FFD060"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="3" Background="#1A1A3A" CornerRadius="8" Padding="14,10">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource StatLabel}" Text="MENACES" Foreground="#AA88FF"/>
+                            <TextBlock x:Name="ThreatsText" Style="{StaticResource StatValue}" Text="0" Foreground="#CC99FF"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </StackPanel>
         </Border>
 
-        <!-- Zone de logs -->
-        <Border Grid.Row="3" 
-               Background="White" 
-               BorderBrush="#CCCCCC" 
-               BorderThickness="0,0,0,0"
-               Padding="20"
-               Height="150">
+        <!-- JOURNAL -->
+        <Border Grid.Row="3" Background="#0D0D1A" BorderBrush="#2A2A3E"
+                BorderThickness="0,1,0,0" Padding="20,14">
             <DockPanel>
-                <TextBlock Text="Journal d'activité :" 
-                          DockPanel.Dock="Top"
-                          FontSize="12" 
-                          FontWeight="SemiBold"
-                          Margin="0,0,0,5"/>
-                
-                <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                             x:Name="LogScrollViewer">
-                    <TextBlock x:Name="LogText" 
-                              FontFamily="Consolas" 
-                              FontSize="11"
-                              TextWrapping="Wrap"
-                              Foreground="#333"/>
+                <TextBlock DockPanel.Dock="Top" Text="JOURNAL D'ACTIVITE"
+                           FontSize="11" FontWeight="SemiBold" Foreground="#555"
+                           Margin="0,0,0,8"/>
+                <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <TextBox x:Name="LogText" FontFamily="Consolas" FontSize="11"
+                             IsReadOnly="True" BorderThickness="0" TextWrapping="Wrap"
+                             Background="Transparent" Foreground="#666"/>
                 </ScrollViewer>
             </DockPanel>
         </Border>
+
     </Grid>
 </Window>
