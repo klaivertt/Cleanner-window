@@ -21,101 +21,91 @@ namespace NettoyerPc.Core
         public string UserName { get; set; } = Environment.UserName;
         public bool RebootRequired { get; set; }
         public string OSVersion { get; set; } = GetOSVersion();
-        public int SuccessfulSteps => Steps.Count(s => s.Status == "Réussi");
+        public int SuccessfulSteps => Steps.Count(s => s.IsCompleted && !s.HasError);
         public int FailedSteps => Steps.Count(s => s.HasError);
         public List<string> DeletedFilePaths { get; set; } = new();
+        public List<string> SkippedSteps { get; set; } = new();
 
         public string GenerateReport()
         {
+            var L = Localizer.T;
             var sb = new StringBuilder();
             sb.AppendLine("╔═══════════════════════════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║                                                                                   ║");
-            sb.AppendLine("║                       🧹 RAPPORT DÉTAILLÉ DE NETTOYAGE 🧹                        ║");
-            sb.AppendLine($"║                          {AppConstants.AppName} - v{AppConstants.AppVersion}                              ║");
-            sb.AppendLine("║                                                                                   ║");
+            sb.AppendLine($"║   {(AppConstants.AppName + " v" + AppConstants.AppVersion).PadRight(79)}║");
             sb.AppendLine("╚═══════════════════════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            
-            sb.AppendLine("【 INFORMATIONS SYSTÈME 】");
-            sb.AppendLine($"  📅 Date nettoyage   : {StartTime:dd/MM/yyyy}");
-            sb.AppendLine($"  🕐 Heure début      : {StartTime:HH:mm:ss}");
-            sb.AppendLine($"  🕑 Heure fin        : {EndTime:HH:mm:ss}");
-            sb.AppendLine($"  ⏱️  Durée totale      : {TotalDuration.Hours}h {TotalDuration.Minutes}m {TotalDuration.Seconds}s");
-            sb.AppendLine($"  👤 Utilisateur      : {UserName}");
-            sb.AppendLine($"  💻 Ordinateur       : {MachineName}");
-            sb.AppendLine($"  🖥️  Système          : {OSVersion}");
+
+            sb.AppendLine($"【 {L("report.txt.sysinfo")} 】");
+            sb.AppendLine($"  {L("report.txt.date")}    : {StartTime:dd/MM/yyyy}");
+            sb.AppendLine($"  {L("report.txt.timestart")}: {StartTime:HH:mm:ss}");
+            sb.AppendLine($"  {L("report.txt.timeend")}  : {EndTime:HH:mm:ss}");
+            sb.AppendLine($"  {L("report.txt.duration")} : {TotalDuration.Hours}h {TotalDuration.Minutes}m {TotalDuration.Seconds}s");
+            sb.AppendLine($"  {L("report.txt.user")}     : {UserName}");
+            sb.AppendLine($"  {L("report.txt.machine")}  : {MachineName}");
+            sb.AppendLine($"  {L("report.txt.os")}       : {OSVersion}");
             sb.AppendLine();
-            
-            sb.AppendLine("【 RÉSUMÉ DES RÉSULTATS 】");
-            sb.AppendLine($"  ✓ Fichiers supprimés  : {TotalFilesDeleted} fichiers");
-            sb.AppendLine($"  💾 Espace libéré      : {FormatBytes(TotalSpaceFreed)}");
-            sb.AppendLine($"  ⚠️  Menaces détectées : {ThreatsFound}");
-            sb.AppendLine($"  ✅ Étapes réussies   : {SuccessfulSteps}/{Steps.Count}");
-            sb.AppendLine($"  ❌ Étapes échouées    : {FailedSteps}/{Steps.Count}");
-            sb.AppendLine($"  🔄 Redémarrage       : {(RebootRequired ? "REQUIS ⚠️" : "Non requis")}");
+
+            sb.AppendLine($"【 {L("report.txt.summary")} 】");
+            sb.AppendLine($"  ✓  {L("report.txt.files")}      : {TotalFilesDeleted}");
+            sb.AppendLine($"  💾 {L("report.txt.space")}      : {FormatBytes(TotalSpaceFreed)}");
+            sb.AppendLine($"  ⚠️  {L("report.txt.threats")}     : {ThreatsFound}");
+            sb.AppendLine($"  ✅ {L("report.txt.steps.ok")}    : {SuccessfulSteps}/{Steps.Count}");
+            sb.AppendLine($"  ❌ {L("report.txt.steps.failed")}: {FailedSteps}/{Steps.Count}");
+            sb.AppendLine($"  ⏭️  {L("report.txt.skipped.label")}: {SkippedSteps.Count}");
+            sb.AppendLine($"  🔄 {L("report.txt.reboot.label")}: {(RebootRequired ? L("report.txt.reboot.yes.short") : L("report.txt.reboot.no.short"))}");
             sb.AppendLine();
-            
-            sb.AppendLine("【 DÉTAILS PAR ÉTAPE 】");
+
+            if (SkippedSteps.Count > 0)
+            {
+                sb.AppendLine($"【 {L("report.txt.skipped")} 】");
+                foreach (var s in SkippedSteps)
+                    sb.AppendLine($"  ⏭️  {s}");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine($"【 {L("report.txt.stepdetails")} 】");
             sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             
             foreach (var step in Steps)
             {
-                var statusSymbol = step.Status == "Réussi" ? "✓" : step.HasError ? "✗" : "⊘";
+                var statusSymbol = step.HasError ? "✗" : "✓";
                 sb.AppendLine();
                 sb.AppendLine($"  {statusSymbol} [{step.Category.ToUpper()}] {step.Name}");
-                sb.AppendLine($"      Statut          : {step.Status}");
-                sb.AppendLine($"      Fichiers        : {step.FilesDeleted}");
-                sb.AppendLine($"      Espace libéré   : {FormatBytes(step.SpaceFreed)}");
-                sb.AppendLine($"      Durée           : {step.Duration.TotalSeconds:0.00}s");
+                sb.AppendLine($"      {L("report.txt.status")}     : {step.Status}");
+                sb.AppendLine($"      {L("report.txt.files")}      : {step.FilesDeleted}");
+                sb.AppendLine($"      {L("report.txt.space")}      : {FormatBytes(step.SpaceFreed)}");
+                sb.AppendLine($"      {L("report.txt.duration2")}  : {step.Duration.TotalSeconds:0.00}s");
                 if (step.HasError)
-                {
-                    sb.AppendLine($"      ⚠️  Erreur         : {step.ErrorMessage}");
-                }
+                    sb.AppendLine($"      ⚠️  {L("report.txt.error")} : {step.ErrorMessage}");
             }
             
             sb.AppendLine();
             sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sb.AppendLine();
             
-            if (DeletedFilePaths.Count > 0 && DeletedFilePaths.Count <= 1000)
+            if (DeletedFilePaths.Count > 0)
             {
-                sb.AppendLine("【 FICHIERS/DOSSIERS SUPPRIMÉS 】");
-                sb.AppendLine($"  Total : {DeletedFilePaths.Count} éléments");
-                sb.AppendLine();
+                sb.AppendLine($"【 {L("report.txt.paths")} 】");
                 foreach (var path in DeletedFilePaths.Take(500))
-                {
                     sb.AppendLine($"    • {path}");
-                }
                 if (DeletedFilePaths.Count > 500)
-                {
-                    sb.AppendLine($"    ... et {DeletedFilePaths.Count - 500} autres fichiers");
-                }
+                    sb.AppendLine($"    ... {L("report.txt.andmore").Replace("{0}", (DeletedFilePaths.Count - 500).ToString())}");
                 sb.AppendLine();
             }
             
-            sb.AppendLine("【 RECOMMANDATIONS 】");
+            sb.AppendLine($"【 {L("report.txt.reco")} 】");
             if (RebootRequired)
-            {
-                sb.AppendLine("  ⚠️  Un redémarrage est recommandé pour appliquer tous les changements.");
-            }
+                sb.AppendLine($"  ⚠️  {L("report.txt.reco.reboot")}");
             else
-            {
-                sb.AppendLine("  ✓ Aucun redémarrage requis. Les changements sont appliqués immédiatement.");
-            }
-            
+                sb.AppendLine($"  ✓  {L("report.txt.reco.noreboot")}");
             if (FailedSteps > 0)
-            {
-                sb.AppendLine($"  ⚠️  {FailedSteps} étape(s) ont échoué. Consulter les détails ci-dessus.");
-            }
+                sb.AppendLine($"  ⚠️  {L("report.txt.reco.errors").Replace("{0}", FailedSteps.ToString())}");
             else
-            {
-                sb.AppendLine("  ✓ Toutes les étapes se sont déroulées correctement.");
-            }
-            
+                sb.AppendLine($"  ✓  {L("report.txt.reco.ok")}");
+
             sb.AppendLine();
             sb.AppendLine("╔═══════════════════════════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║                        FIN DU RAPPORT DE NETTOYAGE                               ║");
-            sb.AppendLine("║                         Merci d'avoir utilisé PC Clean                           ║");
+            sb.AppendLine($"║   {L("report.txt.footer").PadRight(79)}║");
             sb.AppendLine("╚═══════════════════════════════════════════════════════════════════════════════════╝");
             
             return sb.ToString();
@@ -129,12 +119,26 @@ namespace NettoyerPc.Core
 
         public void SaveReportJson(string directory)
         {
+            // Grouper les étapes par catégorie pour le rapport
+            var byCategory = Steps
+                .GroupBy(s => s.Category)
+                .Select(g => new
+                {
+                    category            = g.Key,
+                    stepsCount          = g.Count(),
+                    successCount        = g.Count(s => !s.HasError),
+                    totalFilesDeleted   = g.Sum(s => s.FilesDeleted),
+                    totalSpaceFreedBytes = g.Sum(s => s.SpaceFreed),
+                    totalSpaceFormatted = FormatBytes(g.Sum(s => s.SpaceFreed)),
+                    durationSeconds     = g.Sum(s => s.Duration.TotalSeconds)
+                }).ToList();
+
             var dto = new
             {
-                version          = "2.1",
+                reportVersion    = "3.0",
                 metadata = new
                 {
-                    timestamp       = DateTime.Now,
+                    generatedAt     = DateTime.Now,
                     appName         = AppConstants.AppName,
                     appVersion      = AppConstants.AppVersion,
                     osVersion       = OSVersion,
@@ -143,37 +147,40 @@ namespace NettoyerPc.Core
                 },
                 execution = new
                 {
-                    startTime       = StartTime,
-                    endTime         = EndTime,
-                    durationSeconds = TotalDuration.TotalSeconds,
-                    durationFormatted = $"{TotalDuration.Hours}h {TotalDuration.Minutes}m {TotalDuration.Seconds}s"
+                    startTime           = StartTime,
+                    endTime             = EndTime,
+                    durationSeconds     = TotalDuration.TotalSeconds,
+                    durationFormatted   = $"{TotalDuration.Hours}h {TotalDuration.Minutes}m {TotalDuration.Seconds}s"
                 },
-                results = new
+                summary = new
                 {
-                    totalFilesDeleted   = TotalFilesDeleted,
-                    totalSpaceFreedBytes = TotalSpaceFreed,
+                    totalFilesDeleted        = TotalFilesDeleted,
+                    totalSpaceFreedBytes     = TotalSpaceFreed,
                     totalSpaceFreedFormatted = FormatBytes(TotalSpaceFreed),
-                    threatsFound        = ThreatsFound,
-                    successfulSteps     = SuccessfulSteps,
-                    failedSteps         = FailedSteps,
-                    totalSteps          = Steps.Count,
-                    rebootRequired      = RebootRequired
+                    threatsFound             = ThreatsFound,
+                    executedSteps            = Steps.Count,
+                    successfulSteps          = SuccessfulSteps,
+                    failedSteps              = FailedSteps,
+                    skippedSteps             = SkippedSteps.Count,
+                    rebootRequired           = RebootRequired
                 },
+                byCategory = byCategory,
                 steps = Steps.Select(s => new
                 {
-                    name            = s.Name,
-                    category        = s.Category,
-                    status          = s.Status,
-                    durationSeconds = s.Duration.TotalSeconds,
-                    filesDeleted    = s.FilesDeleted,
-                    spaceFreedBytes = s.SpaceFreed,
+                    name                = s.Name,
+                    category            = s.Category,
+                    status              = s.Status,
+                    durationSeconds     = Math.Round(s.Duration.TotalSeconds, 2),
+                    filesDeleted        = s.FilesDeleted,
+                    spaceFreedBytes     = s.SpaceFreed,
                     spaceFreedFormatted = FormatBytes(s.SpaceFreed),
-                    hasError        = s.HasError,
-                    errorMessage    = s.ErrorMessage ?? ""
+                    hasError            = s.HasError,
+                    errorMessage        = s.ErrorMessage ?? ""
                 }).ToList(),
+                skippedSteps = SkippedSteps,
                 deletedPaths = DeletedFilePaths.Take(500).ToList()
             };
-            
+
             var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
             var fileName = $"CleanerReport_{StartTime:yyyy-MM-dd_HH-mm-ss}.json";
             File.WriteAllText(Path.Combine(directory, fileName), json);

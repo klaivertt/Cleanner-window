@@ -22,8 +22,8 @@ namespace NettoyerPc
         private int  _stepsTotal  = 0;
         private int  _stepsOk     = 0;
 
-        // step -> (border, titleBlock, statusBlock)
-        private readonly Dictionary<CleaningStep, (Border B, TextBlock T, TextBlock S)> _stepUI = new();
+        // step -> (border, titleBlock, statusBlock, subProgressBar, elapsedLabel, stepStopwatch)
+        private readonly Dictionary<CleaningStep, (Border B, TextBlock T, TextBlock S, ProgressBar P, TextBlock E, Stopwatch SW)> _stepUI = new();
 
         // Couleurs de catégorie
         private static readonly Dictionary<string, string> CatBorderHex = new()
@@ -57,23 +57,24 @@ namespace NettoyerPc
 
             TitleText.Text = mode switch
             {
-                CleaningMode.Complete          => "NETTOYAGE RAPIDE",
-                CleaningMode.DeepClean         => "NETTOYAGE DE PRINTEMPS",
-                CleaningMode.Custom            => "NETTOYAGE PERSONNALISE",
-                CleaningMode.SystemOptimization=> "OPTIMISATION SYSTEME",
-                CleaningMode.Advanced          => "MODE AVANCE",
-                _ => "NETTOYAGE EN COURS"
+                CleaningMode.Complete          => Localizer.T("clean.mode.complete"),
+                CleaningMode.DeepClean         => Localizer.T("clean.mode.deepclean"),
+                CleaningMode.Custom            => Localizer.T("clean.mode.custom"),
+                CleaningMode.SystemOptimization=> Localizer.T("clean.mode.sysopt"),
+                CleaningMode.Advanced          => Localizer.T("clean.mode.advanced"),
+                _ => Localizer.T("clean.title.running")
             };
             SubtitleText.Text = mode switch
             {
-                CleaningMode.Complete          => "Duree estimee : 20-40 minutes",
-                CleaningMode.DeepClean         => "Duree estimee : 60-120 minutes",
-                CleaningMode.Custom            => $"{_engine.SelectedStepNames.Count} operation(s) selectionnee(s)",
-                CleaningMode.SystemOptimization=> "7 etapes — SFC / DISM / reseau / disque",
-                CleaningMode.Advanced          => "Mode complet + bloatwares + sysopt",
-                _ => "Veuillez patienter..."
+                CleaningMode.Complete          => Localizer.T("clean.sub.complete"),
+                CleaningMode.DeepClean         => Localizer.T("clean.sub.deepclean"),
+                CleaningMode.Custom            => _engine.SelectedStepNames.Count + Localizer.T("sel.ops"),
+                CleaningMode.SystemOptimization=> Localizer.T("clean.sub.sysopt"),
+                CleaningMode.Advanced          => Localizer.T("clean.sub.advanced"),
+                _ => Localizer.T("clean.sub.wait")
             };
 
+            Loaded += (s, e) => { ApplyLanguage(); };
             Loaded += async (s, e) => await StartCleaningAsync();
         }
 
@@ -81,8 +82,8 @@ namespace NettoyerPc
         {
             _stopwatch.Start();
             _timer.Start();
-            AddLog("=== DEBUT DU NETTOYAGE ===");
-            AddLog($"Mode : {_mode}  |  {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+            AddLog(Localizer.T("clean.log.start"));
+            AddLog($"Mode : {TitleText.Text}  |  {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
             AddLog("");
 
             try
@@ -119,20 +120,54 @@ namespace NettoyerPc
                 var catHex    = CatBorderHex.TryGetValue(step.Category ?? "general", out var h) ? h : "#2A2A3E";
                 var catBrush  = (SolidColorBrush)new BrushConverter().ConvertFrom(catHex)!;
 
+                // ── Ligne titre + chrono ──────────────────────────────────────────────
                 var titleBlock = new TextBlock
                 {
                     Text       = $"  {step.Name}",
                     FontSize   = 13,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = new SolidColorBrush(Color.FromRgb(100, 180, 255)),
-                    Margin     = new Thickness(0, 0, 0, 4)
                 };
+                var elapsedTxt = new TextBlock
+                {
+                    Text              = "0s",
+                    FontSize          = 10,
+                    Foreground        = new SolidColorBrush(Color.FromRgb(100, 100, 140)),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin            = new Thickness(8, 0, 0, 0),
+                };
+                var headerRow = new Grid();
+                headerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                headerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                Grid.SetColumn(titleBlock, 0);
+                Grid.SetColumn(elapsedTxt, 1);
+                headerRow.Children.Add(titleBlock);
+                headerRow.Children.Add(elapsedTxt);
+
+                // ── Barre de progression sous-tâche (indéterminée = pulsation) ───────
+                var subBar = new ProgressBar
+                {
+                    Height          = 3,
+                    IsIndeterminate = true,
+                    Minimum         = 0,
+                    Maximum         = 100,
+                    Value           = 0,
+                    Foreground      = new SolidColorBrush(Color.FromRgb(74, 172, 255)),
+                    Background      = new SolidColorBrush(Color.FromRgb(30, 30, 50)),
+                    BorderThickness = new Thickness(0),
+                    Margin          = new Thickness(0, 5, 0, 5),
+                };
+
+                // ── Ligne status ──────────────────────────────────────────────────────
                 var statusBlock = new TextBlock
                 {
-                    Text       = "En cours...",
+                    Text       = Localizer.T("clean.step.running"),
                     FontSize   = 11,
                     Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 140))
                 };
+
+                // ── Indicateur de catégorie (barre latérale colorée) ──────────────────
                 var indicator = new Border
                 {
                     Width          = 4,
@@ -141,12 +176,18 @@ namespace NettoyerPc
                     Margin         = new Thickness(0, 0, 12, 0)
                 };
 
+                var sp = new StackPanel();
+                sp.Children.Add(headerRow);
+                sp.Children.Add(subBar);
+                sp.Children.Add(statusBlock);
+
                 var rowGrid = new Grid();
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                var sp = new StackPanel(); sp.Children.Add(titleBlock); sp.Children.Add(statusBlock);
-                Grid.SetColumn(indicator, 0); Grid.SetColumn(sp, 1);
-                rowGrid.Children.Add(indicator); rowGrid.Children.Add(sp);
+                Grid.SetColumn(indicator, 0);
+                Grid.SetColumn(sp, 1);
+                rowGrid.Children.Add(indicator);
+                rowGrid.Children.Add(sp);
 
                 var border = new Border
                 {
@@ -159,8 +200,12 @@ namespace NettoyerPc
                     Child           = rowGrid
                 };
 
+                // ── Chrono individuel ────────────────────────────────────────────────
+                var stepSw = new Stopwatch();
+                stepSw.Start();
+
                 StepsPanel.Children.Add(border);
-                _stepUI[step] = (border, titleBlock, statusBlock);
+                _stepUI[step] = (border, titleBlock, statusBlock, subBar, elapsedTxt, stepSw);
                 ProgressText.Text = step.Name;
 
                 // Auto-scroll
@@ -173,28 +218,41 @@ namespace NettoyerPc
             Dispatcher.Invoke(() =>
             {
                 if (!_stepUI.TryGetValue(step, out var ui)) return;
-                var (border, title, status) = ui;
+                var (border, title, status, subBar, elapsedTxt, stepSw) = ui;
+
+                stepSw.Stop();
+                var finalElapsed = stepSw.Elapsed;
+                var elStr = finalElapsed.TotalMinutes >= 1
+                    ? $"{(int)finalElapsed.TotalMinutes}m {finalElapsed.Seconds:00}s"
+                    : $"{finalElapsed.TotalSeconds:F1}s";
+
+                // Finaliser la barre de progression
+                subBar.IsIndeterminate = false;
+                subBar.Value = 100;
 
                 if (step.HasError)
                 {
-                    title.Text       = $"  {step.Name}";
-                    title.Foreground = new SolidColorBrush(Color.FromRgb(255, 80, 80));
-                    status.Text      = $"ERREUR : {step.ErrorMessage}";
-                    status.Foreground= new SolidColorBrush(Color.FromRgb(200, 80, 80));
+                    var errLabel = Localizer.T("clean.step.error");
+                    subBar.Foreground  = new SolidColorBrush(Color.FromRgb(200, 60, 60));
+                    title.Foreground   = new SolidColorBrush(Color.FromRgb(255, 80, 80));
+                    status.Text        = $"{errLabel} : {step.ErrorMessage}";
+                    status.Foreground  = new SolidColorBrush(Color.FromRgb(200, 80, 80));
+                    elapsedTxt.Text    = elStr;
+                    elapsedTxt.Foreground = new SolidColorBrush(Color.FromRgb(200, 80, 80));
                     border.BorderBrush = new SolidColorBrush(Color.FromRgb(140, 30, 30));
                     border.Background  = new SolidColorBrush(Color.FromRgb(35, 18, 18));
                 }
                 else
                 {
+                    var okLabel = Localizer.T("clean.step.ok");
                     _stepsOk++;
-                    title.Text       = $"  {step.Name}";
-                    title.Foreground = new SolidColorBrush(Color.FromRgb(80, 200, 120));
-                    var durStr = step.Duration.TotalMinutes >= 1
-                        ? $"{(int)step.Duration.TotalMinutes}m {step.Duration.Seconds:00}s"
-                        : $"{step.Duration.TotalSeconds:F1}s";
+                    subBar.Foreground  = new SolidColorBrush(Color.FromRgb(80, 200, 120));
+                    title.Foreground   = new SolidColorBrush(Color.FromRgb(80, 200, 120));
+                    elapsedTxt.Text    = elStr;
+                    elapsedTxt.Foreground = new SolidColorBrush(Color.FromRgb(80, 160, 100));
                     status.Text = step.FilesDeleted > 0
-                        ? $"OK — {step.FilesDeleted:N0} fichiers  |  {FormatBytes(step.SpaceFreed)}  |  {durStr}"
-                        : $"OK — {durStr}";
+                        ? $"{okLabel} — {step.FilesDeleted:N0} fichiers  |  {FormatBytes(step.SpaceFreed)}  |  {elStr}"
+                        : $"{okLabel} — {elStr}";
                     status.Foreground = new SolidColorBrush(Color.FromRgb(70, 180, 100));
                     border.Background = new SolidColorBrush(Color.FromRgb(18, 30, 22));
                 }
@@ -236,17 +294,48 @@ namespace NettoyerPc
 
         private void Timer_Tick(object? sender, EventArgs e)
         {
+            // ── Chrono global ─────────────────────────────────────────────────────────
             var el = _stopwatch.Elapsed;
             ElapsedTimeText.Text = $"{(int)el.TotalMinutes}m {el.Seconds:00}s";
+
+            // ── Chrono par étape (vivant uniquement si non terminé) ───────────────────
+            foreach (var kvp in _stepUI)
+            {
+                var step = kvp.Key;
+                if (step.IsCompleted || step.HasError) continue;
+
+                var (_, _, _, _, elapsedTxt, stepSw) = kvp.Value;
+                var stepEl = stepSw.Elapsed;
+                var elStr = stepEl.TotalMinutes >= 1
+                    ? $"{(int)stepEl.TotalMinutes}m {stepEl.Seconds:00}s"
+                    : $"{(int)stepEl.TotalSeconds}s";
+
+                // Orange après 2 minutes (tâches longues comme SFC/DISM)
+                elapsedTxt.Text = elStr;
+                elapsedTxt.Foreground = stepEl.TotalMinutes >= 2
+                    ? new SolidColorBrush(Color.FromRgb(255, 184, 48))
+                    : new SolidColorBrush(Color.FromRgb(100, 100, 140));
+
+                // Hint sous la barre pour les très longues tâches
+                if (stepEl.TotalMinutes >= 3)
+                {
+                    var (_, _, statusTxt, _, _, _) = kvp.Value;
+                    if (!statusTxt.Text.Contains("SFC") && !statusTxt.Text.Contains("DISM")
+                        && statusTxt.Text == Localizer.T("clean.step.running"))
+                        statusTxt.Text = "⏳ " + Localizer.T("clean.frozen.hint");
+                }
+            }
         }
 
         private void ShowSummary(CleaningReport report)
         {
             Dispatcher.Invoke(() =>
             {
-                TitleText.Text        = "NETTOYAGE TERMINE";
-                SubtitleText.Text     = $"{report.TotalFilesDeleted:N0} fichiers  |  {FormatBytes(report.TotalSpaceFreed)} liberes";
-                ProgressText.Text     = "Termine";
+                var L = Localizer.T;
+
+                TitleText.Text        = L("clean.title.done");
+                SubtitleText.Text     = $"{report.TotalFilesDeleted:N0} fichiers  |  {FormatBytes(report.TotalSpaceFreed)} libérés";
+                ProgressText.Text     = L("clean.done.label");
                 GlobalProgress.Value  = 100;
                 ProgressPercent.Text  = "100%";
 
@@ -258,25 +347,24 @@ namespace NettoyerPc
                     : $"{(int)dur.TotalMinutes}m {dur.Seconds}s";
 
                 AddLog("");
-                AddLog("=== RESUME FINAL ===");
-                AddLog($"Fichiers supprimes  : {report.TotalFilesDeleted:N0}");
-                AddLog($"Espace libere       : {FormatBytes(report.TotalSpaceFreed)}");
-                AddLog($"Menaces detectees   : {report.ThreatsFound}");
-                AddLog($"Etapes reussies     : {_stepsOk} / {_stepsTotal}");
-                AddLog($"Duree totale        : {durStr}");
-                AddLog($"Rapport JSON sauvegarde dans : Reports/");
+                AddLog(L("clean.log.summary"));
+                AddLog(L("clean.log.files") + " " + report.TotalFilesDeleted.ToString("N0"));
+                AddLog(L("clean.log.space") + " " + FormatBytes(report.TotalSpaceFreed));
+                AddLog(L("clean.log.threats") + " " + report.ThreatsFound);
+                AddLog(L("clean.log.steps") + " " + _stepsOk + " / " + _stepsTotal);
+                AddLog(L("clean.log.duration") + " " + durStr);
+                AddLog(L("clean.log.report"));
                 AddLog("");
 
-                var ok = _stepsTotal - (_stepsTotal - _stepsOk);
                 MessageBox.Show(
-                    $"Nettoyage termine avec succes !\n\n" +
-                    $"  Espace libere    :  {FormatBytes(report.TotalSpaceFreed)}\n" +
-                    $"  Fichiers suppr.  :  {report.TotalFilesDeleted:N0}\n" +
-                    $"  Etapes reussies  :  {_stepsOk} / {_stepsTotal}\n" +
-                    $"  Duree totale     :  {durStr}\n\n" +
-                    $"Un rapport JSON detaille a ete sauvegarde dans le dossier Reports.\n" +
-                    (report.RebootRequired ? "\nUn redemarrage est recommande." : ""),
-                    "Nettoyage termine",
+                    L("clean.summary.ok") + "\n\n" +
+                    "  " + L("clean.summary.space") + "  " + FormatBytes(report.TotalSpaceFreed) + "\n" +
+                    "  " + L("clean.summary.files") + "  " + report.TotalFilesDeleted.ToString("N0") + "\n" +
+                    "  " + L("clean.summary.steps") + "  " + _stepsOk + " / " + _stepsTotal + "\n" +
+                    "  " + L("clean.summary.dur") + "  " + durStr + "\n\n" +
+                    L("clean.summary.report") +
+                    (report.RebootRequired ? L("clean.summary.reboot") : ""),
+                    L("clean.summary.title"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
             });
         }
@@ -289,11 +377,26 @@ namespace NettoyerPc
             return $"{v:0.##} {sz[o]}";
         }
 
+        // ── Traduction ─────────────────────────────────────────────────────────────
+        private void ApplyLanguage()
+        {
+            var L = Localizer.T;
+            this.Title              = L("clean.title.running");
+            ProgressText.Text       = L("clean.preparing");
+            TxtStatSpaceLabel.Text  = L("clean.stat.space");
+            TxtStatFilesLabel.Text  = L("clean.stat.files");
+            TxtStatStepsLabel.Text  = L("clean.stat.steps");
+            TxtStatThreatsLabel.Text= L("clean.stat.threats");
+            TxtLogTitle.Text        = L("clean.log.title");
+        }
+
         private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_isCompleted) return;
-            if (MessageBox.Show("Le nettoyage est en cours.\nQuitter quand meme ?",
-                    "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.No)
+            if (MessageBox.Show(
+                    Localizer.T("clean.closing.body"),
+                    Localizer.T("clean.closing.title"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.No)
             {
                 e.Cancel = true;
             }
@@ -304,5 +407,8 @@ namespace NettoyerPc
                 _stopwatch.Stop();
             }
         }
+
+        // ── Chrome borderless ──────────────────────────────────────────────────────
+        private void CloseWin_Click(object s, RoutedEventArgs e) => Close();
     }
 }

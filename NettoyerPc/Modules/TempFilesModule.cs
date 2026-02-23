@@ -18,7 +18,10 @@ namespace NettoyerPc.Modules
                 new() { Name = "Suppression TEMP utilisateur",  Category = "general" },
                 new() { Name = "Suppression Windows Temp",       Category = "general" },
                 new() { Name = "Suppression Prefetch",           Category = "general" },
-                new() { Name = "Suppression Thumbnails",         Category = "general" }
+                new() { Name = "Suppression Thumbnails",         Category = "general" },
+                new() { Name = "Rapports d'erreurs Windows (WER)",  Category = "general" },
+                new() { Name = "Cache icones Windows",              Category = "general" },
+                new() { Name = "Fichiers Crash Dumps",              Category = "general" }
             };
         }
 
@@ -59,6 +62,12 @@ namespace NettoyerPc.Modules
                         }
                     }
                 }
+                else if (step.Name.Contains("WER"))
+                    CleanWER(step);
+                else if (step.Name.Contains("icones"))
+                    CleanIconCache(step);
+                else if (step.Name.Contains("Crash Dumps"))
+                    CleanCrashDumps(step);
             }, cancellationToken);
         }
 
@@ -95,6 +104,43 @@ namespace NettoyerPc.Modules
                 }
             }
             catch { }
+        }
+
+        private void CleanWER(CleaningStep step)
+        {
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportQueue"), step);
+            CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"), step);
+            CleanDirectory(@"C:\ProgramData\Microsoft\Windows\WER\ReportQueue", step);
+            CleanDirectory(@"C:\ProgramData\Microsoft\Windows\WER\ReportArchive", step);
+        }
+
+        private void CleanIconCache(CleaningStep step)
+        {
+            var explorerPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                @"Microsoft\Windows\Explorer");
+            if (!Directory.Exists(explorerPath)) return;
+            foreach (var file in Directory.GetFiles(explorerPath, "iconcache*.db"))
+            {
+                try
+                {
+                    var fi = new FileInfo(file);
+                    step.SpaceFreed += fi.Length;
+                    File.Delete(file);
+                    step.FilesDeleted++;
+                }
+                catch { }
+            }
+        }
+
+        private void CleanCrashDumps(CleaningStep step)
+        {
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            CleanDirectory(Path.Combine(local, "CrashDumps"), step);
+            CleanDirectory(@"C:\Windows\Minidump", step, false);
+            CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportQueue"), step);
+            CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"), step);
         }
     }
 }

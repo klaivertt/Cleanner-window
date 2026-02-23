@@ -1,12 +1,18 @@
 ﻿<Window x:Class="NettoyerPc.UpdateCheckForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Vérifier les mises à jour"
+        x:Name="UcWindow" Title="Vérifier les mises à jour"
         Height="420" Width="580"
         WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
         ResizeMode="NoResize"
         Background="#1E1E2E"
         ShowInTaskbar="False">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" ResizeBorderThickness="0"
+                      UseAeroCaptionButtons="False" GlassFrameThickness="0"/>
+    </WindowChrome.WindowChrome>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -16,10 +22,21 @@
         </Grid.RowDefinitions>
 
         <!-- EN-TETE -->
-        <Border Grid.Row="0" Background="#12121F" Padding="20,16">
+        <Border Grid.Row="0" Background="#12121F">
             <StackPanel>
-                <TextBlock Text="Vérification des mises à jour" FontSize="18" FontWeight="Bold" Foreground="White"/>
-                <TextBlock Text="PC Clean" FontSize="12" Foreground="#888" Margin="0,4,0,0"/>
+                <!-- Barre titre -->
+                <Grid Height="32">
+                    <TextBlock Text="PC Clean" FontSize="10" Foreground="#44446A"
+                               VerticalAlignment="Center" Margin="20,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+                        <Button Content="&#x2715;" Style="{StaticResource ChromeCloseBtn}" Click="CloseWin_Click"/>
+                    </StackPanel>
+                </Grid>
+                <!-- Contenu en-tête -->
+                <StackPanel Margin="20,0,20,16">
+                    <TextBlock x:Name="TxtUpdateHeader" Text="Vérification des mises à jour" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="PC Clean" FontSize="12" Foreground="#888" Margin="0,4,0,0"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 
@@ -29,7 +46,7 @@
 
                 <!-- Spinner de vérification -->
                 <StackPanel x:Name="VerifyingPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,40">
-                    <TextBlock Text="Vérification en cours..." FontSize="14" Foreground="#AAAACC"
+                    <TextBlock x:Name="TxtVerifying" Text="Vérification en cours..." FontSize="14" Foreground="#AAAACC"
                                HorizontalAlignment="Center" Margin="0,0,0,16"/>
                     <ProgressBar x:Name="CheckProgress" Height="6" Width="300"
                                  Foreground="#4AACFF" Background="#2A2A3E" IsIndeterminate="True" BorderThickness="0"/>
@@ -40,9 +57,9 @@
                         Background="#0D2A1A" BorderBrush="#2A6B4A" BorderThickness="1"
                         CornerRadius="10" Padding="20,16">
                     <StackPanel>
-                        <TextBlock Text="✓ Vous avez la dernière version" FontSize="16" FontWeight="Bold"
+                        <TextBlock x:Name="TxtUpToDateTitle" Text="✓ Vous avez la dernière version" FontSize="16" FontWeight="Bold"
                                    Foreground="#5AE896"/>
-                        <TextBlock Text="PC Clean est à jour." FontSize="12" Foreground="#4EC98C"
+                        <TextBlock x:Name="TxtUpToDateBody" Text="PC Clean est à jour." FontSize="12" Foreground="#4EC98C"
                                    Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
@@ -52,7 +69,7 @@
                         Background="#0D1F3C" BorderBrush="#2A5A8B" BorderThickness="1"
                         CornerRadius="10" Padding="20,16">
                     <StackPanel>
-                        <TextBlock Text="Nouvelle version disponible !" FontSize="16" FontWeight="Bold"
+                        <TextBlock x:Name="TxtAvailableTitle" Text="Nouvelle version disponible !" FontSize="16" FontWeight="Bold"
                                    Foreground="#6BBBFF"/>
                         <Grid Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
@@ -60,19 +77,19 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="Version actuelle" FontSize="11" Foreground="#888"/>
+                                <TextBlock x:Name="TxtLabelCurrent" Text="Version actuelle" FontSize="11" Foreground="#888"/>
                                 <TextBlock x:Name="TxtCurrentVer" Text="2.0.0.0" FontSize="13" FontWeight="Bold"
                                            Foreground="#AAAACC"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Nouvelle version" FontSize="11" Foreground="#888"/>
+                                <TextBlock x:Name="TxtLabelNew" Text="Nouvelle version" FontSize="11" Foreground="#888"/>
                                 <TextBlock x:Name="TxtNewVer" Text="2.1.0.0" FontSize="13" FontWeight="Bold"
                                            Foreground="#6BBBFF"/>
                             </StackPanel>
                         </Grid>
 
                         <!-- Changelog -->
-                        <TextBlock Text="Changements :" FontSize="11" FontWeight="SemiBold" Foreground="#AAAACC"
+                        <TextBlock x:Name="TxtChangelogLabel" Text="Changements :" FontSize="11" FontWeight="SemiBold" Foreground="#AAAACC"
                                    Margin="0,12,0,6"/>
                         <Border Background="#1A1A2E" CornerRadius="6" Padding="12,10" Height="100">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -93,7 +110,7 @@
                         Background="#2A1010" BorderBrush="#6B2020" BorderThickness="1"
                         CornerRadius="10" Padding="20,16">
                     <StackPanel>
-                        <TextBlock Text="Erreur lors de la vérification" FontSize="14" FontWeight="Bold"
+                        <TextBlock x:Name="TxtErrorTitle" Text="Erreur lors de la vérification" FontSize="14" FontWeight="Bold"
                                    Foreground="#FF6B6B"/>
                         <TextBlock x:Name="TxtError" Text="Détail de l'erreur..." FontSize="11" Foreground="#DD8888"
                                    Margin="0,8,0,0" TextWrapping="Wrap"/>

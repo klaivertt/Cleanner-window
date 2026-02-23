@@ -20,7 +20,9 @@ namespace NettoyerPc.Modules
             {
                 new() { Name = "Corbeilles (tous disques)",     Category = "windows" },
                 new() { Name = "Journaux Windows",              Category = "windows" },
-                new() { Name = "Nettoyage disque (cleanmgr)",   Category = "windows" }
+                new() { Name = "Nettoyage disque (cleanmgr)",   Category = "windows" },
+                new() { Name = "Cache Microsoft Store",          Category = "windows" },
+                new() { Name = "Delivery Optimization",         Category = "windows" }
             };
 
             if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
@@ -71,6 +73,10 @@ namespace NettoyerPc.Modules
                 {
                     RunCommand("Dism.exe", "/online /Cleanup-Image /StartComponentCleanup", step);
                 }
+                else if (step.Name.Contains("Microsoft Store"))
+                    CleanMicrosoftStore(step);
+                else if (step.Name.Contains("Delivery Optimization"))
+                    CleanDeliveryOptimization(step);
             }, cancellationToken);
         }
 
@@ -347,6 +353,55 @@ namespace NettoyerPc.Modules
             }
             catch { }
             return size;
+        }
+
+        private void CleanMicrosoftStore(CleaningStep step)
+        {
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var storeCache = Path.Combine(local, "Packages",
+                "Microsoft.WindowsStore_8wekyb3d8bbwe", "LocalCache");
+            if (Directory.Exists(storeCache))
+            {
+                try
+                {
+                    var di = new DirectoryInfo(storeCache);
+                    step.SpaceFreed += GetDirectorySize(di);
+                    Directory.Delete(storeCache, true);
+                    step.FilesDeleted++;
+                }
+                catch { }
+            }
+        }
+
+        private void CleanDeliveryOptimization(CleaningStep step)
+        {
+            var doPath = @"C:\Windows\SoftwareDistribution\DeliveryOptimization";
+            if (Directory.Exists(doPath))
+            {
+                try
+                {
+                    StopService("DoSvc");
+                    var di = new DirectoryInfo(doPath);
+                    step.SpaceFreed += GetDirectorySize(di);
+                    Directory.Delete(doPath, true);
+                    step.FilesDeleted++;
+                    StartService("DoSvc");
+                }
+                catch { }
+            }
+            // Cache local DO
+            var localDO = @"C:\Windows\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization";
+            if (Directory.Exists(localDO))
+            {
+                try
+                {
+                    var di = new DirectoryInfo(localDO);
+                    step.SpaceFreed += GetDirectorySize(di);
+                    Directory.Delete(localDO, true);
+                    step.FilesDeleted++;
+                }
+                catch { }
+            }
         }
     }
 }

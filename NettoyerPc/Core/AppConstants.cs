@@ -9,10 +9,10 @@ namespace NettoyerPc.Core
         public const string AppName = "PC Clean";
 
         /// <summary>Version de l'application (synchronized avec .csproj).</summary>
-        public const string AppVersion = "0.1.0-beta";
+        public const string AppVersion = "0.1.1-beta";
 
         /// <summary>Numéro de version complet (pour compatibilité).</summary>
-        public static readonly Version VersionNumber = new(0, 1, 0, 0);
+        public static readonly Version VersionNumber = new(0, 1, 1, 0);
 
         /// <summary>Répertoire des rapports (relatif à l'exécutable).</summary>
         public const string ReportsDirectory = "Reports";

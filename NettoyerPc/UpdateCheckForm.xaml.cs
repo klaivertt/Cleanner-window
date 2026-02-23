@@ -14,7 +14,25 @@ namespace NettoyerPc
         {
             InitializeComponent();
             Owner = Application.Current.MainWindow;
-            Loaded += (s, e) => CheckForUpdatesAsync();
+            Loaded += (s, e) => { ApplyLanguage(); CheckForUpdatesAsync(); };
+        }
+
+        private void ApplyLanguage()
+        {
+            var L = Core.Localizer.T;
+            Title                = L("update.window.title");
+            TxtUpdateHeader.Text = L("update.header");
+            TxtVerifying.Text    = L("update.checking");
+            TxtUpToDateTitle.Text= L("update.uptodate.title");
+            TxtUpToDateBody.Text = L("update.uptodate.body");
+            TxtAvailableTitle.Text  = L("update.available.title");
+            TxtLabelCurrent.Text    = L("update.label.current");
+            TxtLabelNew.Text        = L("update.label.new");
+            TxtChangelogLabel.Text  = L("update.changelog.title");
+            TxtChangelog.Text       = L("update.changelog.loading");
+            TxtErrorTitle.Text      = L("update.error.title");
+            BtnInstall.Content      = L("update.btn.install");
+            BtnClose.Content        = L("btn.close");
         }
 
         private async void CheckForUpdatesAsync()
@@ -73,7 +91,7 @@ namespace NettoyerPc
                 TxtNewVer.Text = _updateInfo.Version.ToString();
                 TxtChangelog.Text = _updateInfo.ChangeLog.Length > 0
                     ? _updateInfo.ChangeLog
-                    : "Aucun changement note.";
+                    : Core.Localizer.T("update.changelog.none");
             }
         }
 
@@ -108,19 +126,20 @@ namespace NettoyerPc
 
             if (success)
             {
+                var L = Core.Localizer.T;
                 MessageBox.Show(
-                    "Mise a jour telechargee avec succes !\n\n" +
-                    "L'application se fermera pour installer la nouvelle version.",
-                    "Mise a jour",
+                    L("update.install.ok.body"),
+                    L("update.install.ok.title"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 Application.Current.Shutdown();
             }
             else
             {
+                var L = Core.Localizer.T;
                 MessageBox.Show(
-                    "Erreur lors du telechargement de la mise a jour.",
-                    "Erreur",
+                    L("update.install.err.body"),
+                    L("update.install.err.title"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
                 _installing = false;
@@ -129,5 +148,8 @@ namespace NettoyerPc
         }
 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
+        // ── Chrome borderless ─────────────────────────────────
+        private void CloseWin_Click(object s, RoutedEventArgs e) => Close();
     }
 }

@@ -22,7 +22,15 @@ namespace NettoyerPc.Modules
                 new() { Name = "OBS Studio (logs)", Category = "thirdparty" },
                 new() { Name = "Steam (shader cache, logs, dumps)", Category = "thirdparty" },
                 new() { Name = "Epic Games (logs)", Category = "thirdparty" },
-                new() { Name = "Battle.net (cache)", Category = "thirdparty" },
+                new() { Name = "Battle.net (cache)",              Category = "thirdparty" },
+                new() { Name = "Zoom (cache, logs)",               Category = "thirdparty" },
+                new() { Name = "WhatsApp Desktop (cache)",         Category = "thirdparty" },
+                new() { Name = "Telegram Desktop (cache)",         Category = "thirdparty" },
+                new() { Name = "Adobe Creative Cloud (cache)",     Category = "thirdparty" },
+                new() { Name = "Figma (cache)",                    Category = "thirdparty" },
+                new() { Name = "Notion (cache)",                   Category = "thirdparty" },
+                new() { Name = "Twitch (cache)",                   Category = "thirdparty" },
+                new() { Name = "VLC (cache, logs)",                Category = "thirdparty" },
             };
         }
 
@@ -37,7 +45,15 @@ namespace NettoyerPc.Modules
                 else if (step.Name.StartsWith("OBS"))     CleanOBS(step);
                 else if (step.Name.StartsWith("Steam"))   CleanSteam(step);
                 else if (step.Name.StartsWith("Epic"))    CleanEpic(step);
-                else if (step.Name.StartsWith("Battle"))  CleanBattleNet(step);
+                else if (step.Name.StartsWith("Battle"))   CleanBattleNet(step);
+                else if (step.Name.StartsWith("Zoom"))      CleanZoom(step);
+                else if (step.Name.StartsWith("WhatsApp"))  CleanWhatsApp(step);
+                else if (step.Name.StartsWith("Telegram"))  CleanTelegram(step);
+                else if (step.Name.StartsWith("Adobe"))     CleanAdobe(step);
+                else if (step.Name.StartsWith("Figma"))     CleanFigma(step);
+                else if (step.Name.StartsWith("Notion"))    CleanNotion(step);
+                else if (step.Name.StartsWith("Twitch"))    CleanTwitch(step);
+                else if (step.Name.StartsWith("VLC"))       CleanVLC(step);
             }, cancellationToken);
         }
 
@@ -141,6 +157,93 @@ namespace NettoyerPc.Modules
             try { foreach (var f in dir.GetFiles("*", SearchOption.AllDirectories)) try { size += f.Length; } catch { } }
             catch { }
             return size;
+        }
+
+        private void CleanZoom(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            DeleteDir(Path.Combine(appData, "Zoom", "logs"), step);
+            DeleteDir(Path.Combine(local,   "Zoom", "logs"), step);
+            var zoomData = Path.Combine(appData, "Zoom", "data");
+            if (Directory.Exists(zoomData))
+                foreach (var dir in Directory.GetDirectories(zoomData))
+                    if (Path.GetFileName(dir).EndsWith("cache", StringComparison.OrdinalIgnoreCase))
+                        DeleteDir(dir, step);
+        }
+
+        private void CleanWhatsApp(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            DeleteDir(Path.Combine(appData, "WhatsApp", "Cache"),       step);
+            DeleteDir(Path.Combine(appData, "WhatsApp", "Code Cache"),  step);
+            DeleteDir(Path.Combine(appData, "WhatsApp", "GPUCache"),    step);
+            // WhatsApp UWP
+            DeleteDir(Path.Combine(local, "Packages", "5319275A.WhatsAppDesktop_cv1g1gvanyjgm", "LocalCache"), step);
+        }
+
+        private void CleanTelegram(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var tdata = Path.Combine(appData, "Telegram Desktop", "tdata");
+            DeleteDir(Path.Combine(tdata, "emoji"),                step);
+            DeleteDir(Path.Combine(tdata, "user_data", "cache"),   step);
+            DeleteDir(Path.Combine(tdata, "user_data", "media_cache"), step);
+        }
+
+        private void CleanAdobe(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            DeleteDir(Path.Combine(appData, "Adobe", "Common", "Media Cache Files"), step);
+            DeleteDir(Path.Combine(appData, "Adobe", "Common", "Media Cache"),       step);
+            DeleteDir(Path.Combine(appData, "Adobe", "CEP", "cache"),                step);
+            DeleteDir(Path.Combine(appData, "Adobe", "CrashReports"),                step);
+            DeleteDir(Path.Combine(local,   "Adobe", "Fonts"),                       step);
+            // Per-product logs
+            if (Directory.Exists(Path.Combine(appData, "Adobe")))
+                foreach (var dir in Directory.GetDirectories(Path.Combine(appData, "Adobe")))
+                    DeleteDir(Path.Combine(dir, "Logs"), step);
+        }
+
+        private void CleanFigma(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            DeleteDir(Path.Combine(appData, "Figma", "Cache"),      step);
+            DeleteDir(Path.Combine(appData, "Figma", "Code Cache"), step);
+            DeleteDir(Path.Combine(appData, "Figma", "GPUCache"),   step);
+            DeleteDir(Path.Combine(local,   "Figma", "Cache"),      step);
+        }
+
+        private void CleanNotion(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            DeleteDir(Path.Combine(appData, "Notion", "Cache"),      step);
+            DeleteDir(Path.Combine(appData, "Notion", "Code Cache"), step);
+            DeleteDir(Path.Combine(appData, "Notion", "GPUCache"),   step);
+        }
+
+        private void CleanTwitch(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            DeleteDir(Path.Combine(appData, "Twitch", "Browser", "Cache"), step);
+            DeleteDir(Path.Combine(appData, "Twitch", "Cache"),             step);
+            DeleteDir(Path.Combine(local,   "Twitch", "Cache"),             step);
+        }
+
+        private void CleanVLC(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var vlcDir  = Path.Combine(appData, "vlc");
+            if (!Directory.Exists(vlcDir)) return;
+            DeleteDir(Path.Combine(vlcDir, "art", "artistalbum"), step);
+            DeleteDir(Path.Combine(vlcDir, "art", "cover"),       step);
+            foreach (var dir in Directory.GetDirectories(vlcDir))
+                if (Path.GetFileName(dir).IndexOf("cache", StringComparison.OrdinalIgnoreCase) >= 0)
+                    DeleteDir(dir, step);
         }
     }
 }

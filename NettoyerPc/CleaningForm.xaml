@@ -4,9 +4,15 @@
         Title="Nettoyage en cours..."
         Height="780" Width="960"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
         ResizeMode="NoResize"
         Background="#1E1E2E"
         Closing="Window_Closing">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" ResizeBorderThickness="0"
+                      UseAeroCaptionButtons="False" GlassFrameThickness="0"/>
+    </WindowChrome.WindowChrome>
 
     <Window.Resources>
         <Style x:Key="StatLabel" TargetType="TextBlock">
@@ -29,26 +35,37 @@
         </Grid.RowDefinitions>
 
         <!-- EN-TETE -->
-        <Border Grid.Row="0" Background="#12121F" Padding="28,20">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock x:Name="TitleText" Text="NETTOYAGE EN COURS"
-                               FontSize="24" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock x:Name="SubtitleText" Text="Veuillez patienter..."
-                               FontSize="13" Foreground="#888" Margin="0,4,0,0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-                    <TextBlock x:Name="ProgressPercent" Text="0%"
-                               FontSize="36" FontWeight="Bold" Foreground="#4AACFF"
-                               HorizontalAlignment="Right"/>
-                    <TextBlock x:Name="ElapsedTimeText" Text="0m 0s"
-                               FontSize="12" Foreground="#666" HorizontalAlignment="Right"/>
-                </StackPanel>
-            </Grid>
+        <Border Grid.Row="0" Background="#12121F">
+            <StackPanel>
+                <!-- Barre titre -->
+                <Grid Height="32">
+                    <TextBlock Text="PC Clean" FontSize="10" Foreground="#44446A"
+                               VerticalAlignment="Center" Margin="28,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+                        <Button x:Name="BtnWinClose" Content="&#x2715;" Style="{StaticResource ChromeCloseBtn}" Click="CloseWin_Click"/>
+                    </StackPanel>
+                </Grid>
+                <!-- Contenu en-tête -->
+                <Grid Margin="28,0,28,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="TitleText" Text="NETTOYAGE EN COURS"
+                                   FontSize="24" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock x:Name="SubtitleText" Text="Veuillez patienter..."
+                                   FontSize="13" Foreground="#888" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock x:Name="ProgressPercent" Text="0%"
+                                   FontSize="36" FontWeight="Bold" Foreground="#4AACFF"
+                                   HorizontalAlignment="Right"/>
+                        <TextBlock x:Name="ElapsedTimeText" Text="0m 0s"
+                                   FontSize="12" Foreground="#666" HorizontalAlignment="Right"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- LISTE ETAPES -->
@@ -82,28 +99,28 @@
 
                     <Border Grid.Column="0" Background="#0D2A1A" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource StatLabel}" Text="ESPACE LIBERE" Foreground="#4EC98C"/>
+                            <TextBlock x:Name="TxtStatSpaceLabel" Style="{StaticResource StatLabel}" Text="ESPACE LIBERE" Foreground="#4EC98C"/>
                             <TextBlock x:Name="SpaceFreedText" Style="{StaticResource StatValue}" Text="0 B" Foreground="#5AE896"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="1" Background="#0D1F3C" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource StatLabel}" Text="FICHIERS SUPPRIMES" Foreground="#4AACFF"/>
+                            <TextBlock x:Name="TxtStatFilesLabel" Style="{StaticResource StatLabel}" Text="FICHIERS SUPPRIMES" Foreground="#4AACFF"/>
                             <TextBlock x:Name="FilesDeletedText" Style="{StaticResource StatValue}" Text="0" Foreground="#6BBBFF"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="2" Background="#2A1A00" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource StatLabel}" Text="ETAPES OK" Foreground="#FFB830"/>
+                            <TextBlock x:Name="TxtStatStepsLabel" Style="{StaticResource StatLabel}" Text="ETAPES OK" Foreground="#FFB830"/>
                             <TextBlock x:Name="StepsOkText" Style="{StaticResource StatValue}" Text="0 / 0" Foreground="#FFD060"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="3" Background="#1A1A3A" CornerRadius="8" Padding="14,10">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource StatLabel}" Text="MENACES" Foreground="#AA88FF"/>
+                            <TextBlock x:Name="TxtStatThreatsLabel" Style="{StaticResource StatLabel}" Text="MENACES" Foreground="#AA88FF"/>
                             <TextBlock x:Name="ThreatsText" Style="{StaticResource StatValue}" Text="0" Foreground="#CC99FF"/>
                         </StackPanel>
                     </Border>
@@ -115,7 +132,7 @@
         <Border Grid.Row="3" Background="#0D0D1A" BorderBrush="#2A2A3E"
                 BorderThickness="0,1,0,0" Padding="20,14">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="JOURNAL D'ACTIVITE"
+                <TextBlock x:Name="TxtLogTitle" DockPanel.Dock="Top" Text="JOURNAL D'ACTIVITE"
                            FontSize="11" FontWeight="SemiBold" Foreground="#555"
                            Margin="0,0,0,8"/>
                 <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto"

@@ -2,10 +2,17 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="PC Clean"
-        Height="820" Width="960"
+        Height="820" Width="960" MinWidth="820" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="CanMinimize"
-        Background="#1E1E2E">
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="#1E1E2E"
+        Closing="MainForm_Closing">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" ResizeBorderThickness="6"
+                      UseAeroCaptionButtons="False" GlassFrameThickness="0"/>
+    </WindowChrome.WindowChrome>
 
     <Window.Resources>
         <Style x:Key="Card" TargetType="Border">
@@ -51,55 +58,50 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- EN-TETE -->
-        <Border Grid.Row="0" Background="#12121F" Padding="24,18">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="🧹 PC Clean" FontSize="26" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Optimisation de performance · Libération d'espace · Sécurité système · Gestionnaire de jeux" FontSize="12" Foreground="#AAAAAA" Margin="0,3,0,0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BtnCheckUpdate" Content="🔄 Mises à jour" Click="BtnCheckUpdate_Click"
-                            Style="{StaticResource BtnPrimary}" Background="#1A3A6B" Height="36" Margin="0,0,8,0"/>
-                    <Button x:Name="BtnReports" Content="📊 Mes rapports" Click="BtnReports_Click"
-                            Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- BANNIERE SECURITE AMÉLIORÉE -->
-        <Border Grid.Row="1" Background="#0D3320" Padding="20,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="🔒" FontSize="20" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock FontWeight="Bold" Foreground="#4EC98C" FontSize="12">
-                        <Run Text="GARANTIE DE SÉCURITÉ"/>
-                    </TextBlock>
-                    <TextBlock Foreground="#AADDBB" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0">
-                        <Run Text="Ce programme ne supprime jamais vos fichiers de jeux, paramètres, sauvegardes, documents ni applications. Il efface uniquement les fichiers temporaires et caches qui se recréent automatiquement. Aucune donnée personnelle n'est affectée."/>
-                    </TextBlock>
-                </StackPanel>
-            </Grid>
+        <Border Grid.Row="0" Background="#12121F">
+            <StackPanel>
+                <!-- Barre titre : zone de drag + boutons chrome -->
+                <Grid Height="32">
+                    <TextBlock Text="PC Clean" FontSize="10" Foreground="#44446A"
+                               VerticalAlignment="Center" Margin="24,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+                        <Button x:Name="BtnMinimize" Content="&#x2013;" Style="{StaticResource ChromeBtn}" Click="Minimize_Click"/>
+                        <Button x:Name="BtnMaximize" Content="&#x2610;" Style="{StaticResource ChromeBtn}" Click="Maximize_Click"/>
+                        <Button x:Name="BtnWinClose" Content="&#x2715;" Style="{StaticResource ChromeCloseBtn}" Click="CloseWin_Click"/>
+                    </StackPanel>
+                </Grid>
+                <!-- Contenu en-tête -->
+                <Grid Margin="24,0,24,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="🧹 PC Clean" FontSize="26" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock x:Name="TxtSubtitle" Text="Optimisation de performance · Libération d'espace · Sécurité système · Gestionnaire de jeux" FontSize="12" Foreground="#AAAAAA" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnSettings" Content="⚙️ Paramètres" Click="BtnSettings_Click"
+                                Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnCheckUpdate" Content="🔄 Mises à jour" Click="BtnCheckUpdate_Click"
+                                Style="{StaticResource BtnPrimary}" Background="#1A3A6B" Height="36" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnReports" Content="📊 Mes rapports" Click="BtnReports_Click"
+                                Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- CONTENU PRINCIPAL -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Background="#1E1E2E">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#1E1E2E">
             <StackPanel Margin="24,16,24,16">
 
                 <!-- BOUTON VEDETTE : SELECTION PERSONNALISEE -->
@@ -112,14 +114,14 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBlock Text="CHOISIR CE QUE JE VEUX NETTOYER"
+                            <TextBlock x:Name="TxtCustomTitle" Text="CHOISIR CE QUE JE VEUX NETTOYER"
                                            FontSize="17" FontWeight="Bold" Foreground="White"/>
                                 <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A"
                                         Margin="12,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="RECOMMANDE" FontSize="10" FontWeight="Bold" Foreground="#5AE896"/>
+                                    <TextBlock x:Name="TxtCustomBadge" Text="RECOMMANDE" FontSize="10" FontWeight="Bold" Foreground="#5AE896"/>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Style="{StaticResource CardBody}"
+                            <TextBlock x:Name="TxtCustomBody" Style="{StaticResource CardBody}"
                                        Text="Cochez exactement ce que vous voulez supprimer. Chaque option est expliquee avec ce qu elle touche et ce qu elle ne touche pas. Controle total garanti."/>
                         </StackPanel>
                         <Button Grid.Column="1" x:Name="BtnCustom" Content="OUVRIR LA SELECTION" Click="BtnCustom_Click"
@@ -143,15 +145,15 @@
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#2A2A5A" BorderThickness="1">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock Text="Nettoyage Rapide" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock x:Name="TxtQuickTitle" Text="Nettoyage Rapide" FontSize="15" FontWeight="Bold" Foreground="White"/>
                                     <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="100% sur" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
+                                        <TextBlock x:Name="TxtQuickBadge" Text="100% sur" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
                                     </Border>
                                     <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" Margin="6,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="5-15 min" FontSize="10" Foreground="#888"/>
+                                        <TextBlock x:Name="TxtQuickTime" Text="5-15 min" FontSize="10" Foreground="#888"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource CardBody}" Margin="0,0,0,8">
+                                <TextBlock x:Name="TxtQuickBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Ce qui est nettoye :"/>
                                     <LineBreak/><Run Text="  Fichiers temporaires Windows (%TEMP%, C:\Windows\Temp)"/>
                                     <LineBreak/><Run Text="  Cache navigateurs (Chrome, Firefox, Edge, Brave)"/>
@@ -160,7 +162,7 @@
                                     <LineBreak/><Run Text="  Corbeilles sur tous les disques"/>
                                     <LineBreak/><Run Text="  Journaux Windows (logs systeme)"/>
                                 </TextBlock>
-                                <TextBlock Style="{StaticResource CardBody}" Foreground="#4EC98C" Margin="0,0,0,10">
+                                <TextBlock x:Name="TxtQuickNever" Style="{StaticResource CardBody}" Foreground="#4EC98C" Margin="0,0,0,10">
                                     <Run FontWeight="SemiBold" Text="Ne touche JAMAIS : "/>
                                     <Run Text="saves, fichiers jeux, apps installees, documents"/>
                                 </TextBlock>
@@ -173,28 +175,28 @@
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#3A2A5A" BorderThickness="1">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock Text="Gaming + Optimisation Disque" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock x:Name="TxtGamingTitle" Text="Gaming + Optimisation Disque" FontSize="15" FontWeight="Bold" Foreground="White"/>
                                     <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Sur pour les jeux" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
+                                        <TextBlock x:Name="TxtGamingBadge" Text="Sur pour les jeux" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
                                     </Border>
                                 </StackPanel>
                                 <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" HorizontalAlignment="Left" Margin="0,0,0,10">
-                                    <TextBlock Text="20-60 min selon disque" FontSize="10" Foreground="#888"/>
+                                    <TextBlock x:Name="TxtGamingTime" Text="20-60 min selon disque" FontSize="10" Foreground="#888"/>
                                 </Border>
-                                <TextBlock Style="{StaticResource CardBody}" Margin="0,0,0,8">
+                                <TextBlock x:Name="TxtGamingBody1" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Ce qui est nettoye :"/>
                                     <LineBreak/><Run Text="  Shader cache Steam (se recree, ralentit juste 1ere run)"/>
                                     <LineBreak/><Run Text="  Logs et dumps Steam, Epic Games, Battle.net"/>
                                     <LineBreak/><Run Text="  Cache DirectX / GPU shader (D3DSCache)"/>
                                     <LineBreak/><Run Text="  Cache Discord, Spotify, OBS (logs uniquement)"/>
                                 </TextBlock>
-                                <TextBlock Style="{StaticResource CardBody}" Margin="0,0,0,8">
+                                <TextBlock x:Name="TxtGamingBody2" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#FFB830" Text="Optimisation disque :"/>
                                     <LineBreak/><Run Text="  HDD : defragmentation intelligente des secteurs"/>
                                     <LineBreak/><Run Text="  SSD : TRIM (libere les blocs inutilises)"/>
                                     <LineBreak/><Run Text="  Verification erreurs disque (chkdsk /scan)"/>
                                 </TextBlock>
-                                <TextBlock Style="{StaticResource CardBody}" Foreground="#4EC98C" Margin="0,0,0,10">
+                                <TextBlock x:Name="TxtGamingNever" Style="{StaticResource CardBody}" Foreground="#4EC98C" Margin="0,0,0,10">
                                     <Run FontWeight="SemiBold" Text="Ne touche JAMAIS : "/>
                                     <Run Text="fichiers jeux, saves, mods, configurations"/>
                                 </TextBlock>
@@ -215,15 +217,15 @@
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#3A2A2A" BorderThickness="1">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock Text="Nettoyage de Printemps" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock x:Name="TxtDeepTitle" Text="Nettoyage de Printemps" FontSize="15" FontWeight="Bold" Foreground="White"/>
                                     <Border Style="{StaticResource RiskBadge}" Background="#4A2A00" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Modere" FontSize="10" Foreground="#FFB830" FontWeight="Bold"/>
+                                        <TextBlock x:Name="TxtDeepBadge" Text="Modere" FontSize="10" Foreground="#FFB830" FontWeight="Bold"/>
                                     </Border>
                                     <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" Margin="6,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="60-120 min" FontSize="10" Foreground="#888"/>
+                                        <TextBlock x:Name="TxtDeepTime" Text="60-120 min" FontSize="10" Foreground="#888"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource CardBody}" Margin="0,0,0,8">
+                                <TextBlock x:Name="TxtDeepBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Tout le Nettoyage Rapide +"/>
                                     <LineBreak/><Run Text="  Caches de developpement (npm, pip, gradle, NuGet)"/>
                                     <LineBreak/><Run Text="  Nettoyage profond navigateurs"/>
@@ -231,7 +233,7 @@
                                     <LineBreak/><Run Text="  Defragmentation + nettoyage composants Windows"/>
                                     <LineBreak/><Run Text="  Point de restauration cree automatiquement avant"/>
                                 </TextBlock>
-                                <TextBlock Style="{StaticResource CardBody}" Foreground="#AA7733" Margin="0,0,0,10">
+                                <TextBlock x:Name="TxtDeepInfo" Style="{StaticResource CardBody}" Foreground="#AA7733" Margin="0,0,0,10">
                                     <Run FontWeight="SemiBold" Foreground="#FFB830" Text="Info : "/>
                                     <Run Text="Les caches dev (npm, pip...) se re-telechargeront au prochain build. Normal."/>
                                 </TextBlock>
@@ -244,12 +246,12 @@
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#1A3A4A" BorderThickness="1">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock Text="Reparation et Optimisation Systeme" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock x:Name="TxtSysTitle" Text="Reparation et Optimisation Systeme" FontSize="15" FontWeight="Bold" Foreground="White"/>
                                     <Border Style="{StaticResource RiskBadge}" Background="#1A3A5A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Systeme" FontSize="10" Foreground="#4AACFF" FontWeight="Bold"/>
+                                        <TextBlock x:Name="TxtSysBadge" Text="Systeme" FontSize="10" Foreground="#4AACFF" FontWeight="Bold"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource CardBody}" Margin="0,0,0,8">
+                                <TextBlock x:Name="TxtSysBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="7 etapes de reparation Windows :"/>
                                     <LineBreak/><Run Text="  SFC /scannow — verifie l integrite des fichiers systeme"/>
                                     <LineBreak/><Run Text="  DISM /RestoreHealth — repare l image Windows"/>
@@ -258,7 +260,7 @@
                                     <LineBreak/><Run Text="  Rebuild cache polices de caracteres"/>
                                     <LineBreak/><Run Text="  TRIM et defragmentation de tous les disques"/>
                                 </TextBlock>
-                                <TextBlock Style="{StaticResource CardBody}" Foreground="#4466AA" Margin="0,0,0,10">
+                                <TextBlock x:Name="TxtSysDur" Style="{StaticResource CardBody}" Foreground="#4466AA" Margin="0,0,0,10">
                                     <Run FontWeight="SemiBold" Foreground="#4AACFF" Text="Duree : "/>
                                     <Run Text="SFC et DISM peuvent durer 30-90 min. Le PC reste utilisable."/>
                                 </TextBlock>
@@ -267,16 +269,40 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Mises à jour des pilotes -->
+                        <Border Style="{StaticResource Card}" Background="#0D1F2E" BorderBrush="#1A3A5A" BorderThickness="1">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBlock x:Name="TxtDriverTitle" Text="Mises à jour des Pilotes" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                    <Border Style="{StaticResource RiskBadge}" Background="#1A3A5A" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtDriverBadge" Text="Windows Update" FontSize="10" Foreground="#4AACFF" FontWeight="Bold"/>
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock x:Name="TxtDriverBody" Style="{StaticResource CardBody}" Margin="0,0,0,10">
+                                    <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Detecte et installe les pilotes :"/>
+                                    <LineBreak/><Run Text="  GPU (NVIDIA, AMD, Intel Arc)"/>
+                                    <LineBreak/><Run Text="  Controleurs chipset, son, USB 3"/>
+                                    <LineBreak/><Run Text="  Pilotes reseau, Wi-Fi, Bluetooth"/>
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="BtnDriverUpdate" Content="OUVRIR MISES A JOUR" Click="BtnDriverUpdate_Click"
+                                            Style="{StaticResource BtnPrimary}" Background="#1A4A7C" Margin="0,0,8,0"/>
+                                    <Button x:Name="BtnDriverScan" Content="DIAGNOSTIC" Click="BtnDriverScan_Click"
+                                            Style="{StaticResource BtnPrimary}" Background="#2A2A3E"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Caches Apps Tierces -->
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#2A1A4A" BorderThickness="1">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock Text="Caches Applications Tierces" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock x:Name="TxtThirdTitle" Text="Caches Applications Tierces" FontSize="15" FontWeight="Bold" Foreground="White"/>
                                     <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="100% sur" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
+                                        <TextBlock x:Name="TxtThirdBadge" Text="100% sur" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
                                     </Border>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource CardBody}" Margin="0,0,0,8">
+                                <TextBlock x:Name="TxtThirdBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run Text="Supprime uniquement les caches et logs (pas les apps) :"/>
                                     <LineBreak/><Run Text="  Discord (cache GPU, code cache)"/>
                                     <LineBreak/><Run Text="  Spotify (storage cache)"/>
@@ -302,12 +328,12 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBlock Text="SUPPRESSION BLOATWARES" FontSize="14" FontWeight="Bold" Foreground="#FFB830"/>
+                                <TextBlock x:Name="TxtBloatTitle" Text="SUPPRESSION BLOATWARES" FontSize="14" FontWeight="Bold" Foreground="#FFB830"/>
                                 <Border Style="{StaticResource RiskBadge}" Background="#5A3000" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="DESINSTALLE DES APPLICATIONS" FontSize="10" Foreground="#FFB830" FontWeight="Bold"/>
+                                    <TextBlock x:Name="TxtBloatBadge" Text="DESINSTALLE DES APPLICATIONS" FontSize="10" Foreground="#FFB830" FontWeight="Bold"/>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Foreground="#DDAA55" FontSize="12" TextWrapping="Wrap">
+                            <TextBlock x:Name="TxtBloatBody" Foreground="#DDAA55" FontSize="12" TextWrapping="Wrap">
                                 <Run Text="Supprime definitivement : Candy Crush, Facebook, TikTok, Xbox GameBar, Cortana, Netflix, Solitaire, Mixed Reality, Bing + desactive la telemetrie Microsoft."/>
                                 <LineBreak/>
                                 <Run FontWeight="SemiBold" Foreground="#FF9933" Text="Xbox GameBar (Win+G) sera supprime. Les jeux eux-memes ne sont pas affectes."/>
@@ -323,7 +349,7 @@
         </ScrollViewer>
 
         <!-- PIED DE PAGE -->
-        <Border Grid.Row="3" Background="#12121F" BorderBrush="#2A2A3E" BorderThickness="0,1,0,0" Padding="24,12">
+        <Border Grid.Row="2" Background="#0D0D1A" BorderBrush="#2A2A3E" BorderThickness="0,1,0,0" Padding="24,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -331,15 +357,15 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse Width="8" Height="8" Fill="#4EC98C" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock x:Name="TxtAdminStatus" Text="Droits administrateur actifs"
-                               Foreground="#4EC98C" FontSize="12" VerticalAlignment="Center"/>
+                    <Ellipse Width="7" Height="7" Fill="#4EC98C" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock x:Name="TxtAdminStatus" Text="Admin"
+                               Foreground="#4EC98C" FontSize="11" VerticalAlignment="Center"/>
                 </StackPanel>
                 <TextBlock x:Name="TxtLastCleanup" Grid.Column="1"
-                           Foreground="#555" FontSize="11" VerticalAlignment="Center"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="PC Clean  v2.0"
-                           Foreground="#444" FontSize="11" VerticalAlignment="Center"/>
+                           Foreground="#444466" FontSize="11" VerticalAlignment="Center"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="2" Text="PC Clean  v0.1.0-beta"
+                           Foreground="#333355" FontSize="11" VerticalAlignment="Center"/>
             </Grid>
         </Border>
 

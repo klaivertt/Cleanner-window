@@ -83,6 +83,18 @@ namespace NettoyerPc.Core
                 {
                     if (token.IsCancellationRequested) break;
 
+                    // Vérifier si l'étape doit être ignorée (app désactivée)
+                    if (IsStepSkipped(step))
+                    {
+                        Report.SkippedSteps.Add(step.Name);
+                        LogMessage?.Invoke($"Ignoré (app désactivée): {step.Name}");
+                        currentStepIndex++;
+                        var skipPct = (int)((double)currentStepIndex / totalSteps * 100);
+                        progress?.Report(skipPct);
+                        ProgressChanged?.Invoke(skipPct);
+                        continue;
+                    }
+
                     Steps.Add(step);
                     StepStarted?.Invoke(step);
                     LogMessage?.Invoke($"Démarrage: {step.Name}");
@@ -186,7 +198,50 @@ namespace NettoyerPc.Core
             _cancellationTokenSource?.Cancel();
             LogMessage?.Invoke("Annulation demandée...");
         }
+        // ─── Mapping étape → clé d'app (null = toujours exécuté) ─────────────────
+        // Lorsque SkipDisabledApps est vrai, les étapes dont l'app est désactivée
+        // sont ignorées et ajoutées à Report.SkippedSteps.
+        private static readonly Dictionary<string, string> StepAppMap =
+            new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Nettoyage Firefox"]                         = "firefox",
+            ["Nettoyage Chrome"]                          = "chrome",
+            ["Nettoyage Edge"]                            = "edge",
+            ["Nettoyage Brave"]                           = "brave",
+            ["Nettoyage Opera / Opera GX"]                = "opera",
+            ["Nettoyage Vivaldi"]                         = "vivaldi",
+            ["Steam cache (tous disques)"]                = "steam",
+            ["Steam (shader cache, logs, dumps)"]         = "steam",
+            ["Epic Games / Battle.net"]                   = "epicgames",
+            ["Epic Games (logs)"]                         = "epicgames",
+            ["Battle.net (cache)"]                        = "battlenet",
+            ["EA App / Origin (cache, logs)"]             = "eaapp",
+            ["Ubisoft Connect (cache)"]                   = "ubisoft",
+            ["GOG Galaxy (cache)"]                        = "gog",
+            ["Riot Games / League (cache)"]               = "riot",
+            ["Minecraft (logs, crash reports)"]           = "minecraft",
+            ["Discord (cache, code cache, GPU cache)"]    = "discord",
+            ["Spotify (storage cache)"]                   = "spotify",
+            ["Teams (cache, GPU cache)"]                  = "teams",
+            ["Slack (cache, code cache)"]                 = "slack",
+            ["OBS Studio (logs)"]                         = "obs",
+            ["Zoom (cache, logs)"]                        = "zoom",
+            ["WhatsApp Desktop (cache)"]                  = "whatsapp",
+            ["Telegram Desktop (cache)"]                  = "telegram",
+            ["Adobe Creative Cloud (cache)"]              = "adobe",
+            ["Figma (cache)"]                             = "figma",
+            ["Notion (cache)"]                            = "notion",
+            ["Twitch (cache)"]                            = "twitch",
+            ["VLC (cache, logs)"]                         = "vlc",
+        };
 
+        private static bool IsStepSkipped(CleaningStep step)
+        {
+            var prefs = UserPreferences.Current;
+            if (!prefs.SkipDisabledApps) return false;
+            if (!StepAppMap.TryGetValue(step.Name, out var appKey)) return false;
+            return !prefs.IsAppEnabled(appKey);
+        }
         private static string FormatBytes(long bytes)
         {
             string[] sizes = { "B", "KB", "MB", "GB", "TB" };

@@ -22,7 +22,29 @@ namespace NettoyerPc
         {
             InitializeComponent();
             _reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-            Loaded += (s, e) => LoadReportList();
+            Loaded += (s, e) => { ApplyLanguage(); LoadReportList(); };
+        }
+
+        private void ApplyLanguage()
+        {
+            var L = Core.Localizer.T;
+            Title                   = L("report.window.title");
+            TxtRvHeader.Text        = L("report.header");
+            BtnOpenFolder.Content   = L("report.btn.folder");
+            BtnCloseRv.Content      = L("btn.close");
+            TxtSidebarHistory.Text  = L("report.sidebar.history");
+            BtnDeleteReport.Content = L("report.btn.delete");
+            TxtPlaceholder1.Text    = L("report.placeholder.title");
+            TxtPlaceholder2.Text    = L("report.placeholder.body");
+            TxtStatSpaceLabel.Text  = L("report.stat.space");
+            TxtStatSpaceSub.Text    = L("report.stat.space.sub");
+            TxtStatFilesLabel.Text  = L("report.stat.files");
+            TxtStatFilesSub.Text    = L("report.stat.files.sub");
+            TxtStatDurLabel.Text    = L("report.stat.duration");
+            TxtStatDurSub.Text      = L("report.stat.duration.sub");
+            TxtStatStepsLabel.Text  = L("report.stat.steps");
+            TxtDetailTitle.Text     = L("report.detail.title");
+            TxtLegacyTitle.Text     = L("report.legacy.title");
         }
 
         private void LoadReportList()
@@ -32,7 +54,7 @@ namespace NettoyerPc
 
             if (!Directory.Exists(_reportDir))
             {
-                TxtSubtitle.Text = "Aucun rapport disponible";
+                TxtSubtitle.Text = Core.Localizer.T("report.subtitle.none");
                 return;
             }
 
@@ -43,7 +65,7 @@ namespace NettoyerPc
 
             if (allFiles.Count == 0)
             {
-                TxtSubtitle.Text = "Aucun rapport disponible";
+                TxtSubtitle.Text = Core.Localizer.T("report.subtitle.none");
                 return;
             }
 
@@ -62,11 +84,11 @@ namespace NettoyerPc
                 }
                 catch { dateStr = name; }
 
-                var sub = isJson ? "JSON — stats detaillees" : "TXT — ancien format";
+                var sub = isJson ? Core.Localizer.T("report.json.format") : Core.Localizer.T("report.txt.format");
                 ReportList.Items.Add(new ReportItem(Path.GetFileName(file), dateStr, sub, isJson));
             }
 
-            TxtSubtitle.Text = $"{allFiles.Count} rapport(s) enregistre(s)";
+            TxtSubtitle.Text = $"{allFiles.Count}{Core.Localizer.T("report.subtitle.count")}";
             UpdateFooterStats();
         }
 
@@ -82,7 +104,8 @@ namespace NettoyerPc
                 var space = root.GetProperty("totalSpaceFreed").GetInt64();
                 var files = root.GetProperty("totalFilesDeleted").GetInt32();
                 var start = root.GetProperty("startTime").GetDateTime();
-                TxtFooterStats.Text = $"Derniere session : {start:dd/MM/yyyy}  |  {CleaningReport.FormatBytes(space)} liberes  |  {files} fichiers supprimes";
+                var L2 = Core.Localizer.T;
+                TxtFooterStats.Text = L2("report.footer.last") + start.ToString("dd/MM/yyyy") + "  |  " + CleaningReport.FormatBytes(space) + L2("report.footer.freed") + files + L2("report.footer.files");
             }
             catch { }
         }
@@ -120,8 +143,9 @@ namespace NettoyerPc
             var span    = TimeSpan.FromSeconds(durSec);
             var spanStr = span.TotalMinutes >= 1 ? $"{(int)span.TotalMinutes}m {span.Seconds:00}s" : $"{span.Seconds}s";
 
-            ReportTitle.Text = $"Session du {startTime:dddd dd MMMM yyyy à HH:mm}";
-            ReportMeta.Text  = $"Utilisateur : {user}   •   Machine : {machine}";
+            var L = Core.Localizer.T;
+            ReportTitle.Text = L("report.session") + startTime.ToString("dddd dd MMMM yyyy ") + "\u00e0 " + startTime.ToString("HH:mm");
+            ReportMeta.Text  = L("report.user") + user + L("report.machine") + machine;
 
             StatSpace.Text    = CleaningReport.FormatBytes(spaceFreed);
             StatFiles.Text    = totalFiles.ToString("N0");
@@ -130,7 +154,8 @@ namespace NettoyerPc
             var total = stepsEl.GetArrayLength();
             var ok    = stepsEl.EnumerateArray().Count(s => !s.GetProperty("hasError").GetBoolean());
             StatSteps.Text    = total.ToString();
-            StatStepsSub.Text = $"{ok} reussies  •  {total - ok} erreur(s)";
+            var Ls = Core.Localizer.T;
+            StatStepsSub.Text = $"{ok}{Ls("report.steps.ok")}{total - ok}{Ls("report.steps.errors")}";
 
             StepsList.Items.Clear();
             foreach (var step in stepsEl.EnumerateArray())
@@ -211,10 +236,11 @@ namespace NettoyerPc
                 rightSP.Children.Add(b);
             }
 
-            Chip("statut",  hasError ? "ERREUR" : "OK",                hasError ? "#5A1010" : "#0D2A1A");
-            Chip("duree",   duration,                                   "#1A1A3A");
-            Chip("fichiers",files.ToString("N0"),                       "#0D1F3C");
-            Chip("espace",  CleaningReport.FormatBytes(space),          "#0D2A1A");
+            var Lc = Core.Localizer.T;
+            Chip(Lc("report.chip.status"),  hasError ? Lc("report.chip.error") : Lc("report.chip.ok"), hasError ? "#5A1010" : "#0D2A1A");
+            Chip(Lc("report.chip.duration"), duration,                                                   "#1A1A3A");
+            Chip(Lc("report.chip.files"),    files.ToString("N0"),                                       "#0D1F3C");
+            Chip(Lc("report.chip.space"),    CleaningReport.FormatBytes(space),                         "#0D2A1A");
 
             Grid.SetColumn(rightSP, 1);
             grid.Children.Add(leftSP);
@@ -247,7 +273,9 @@ namespace NettoyerPc
         private void BtnDeleteReport_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedItem == null) return;
-            if (MessageBox.Show($"Supprimer :\n{_selectedItem.FileName} ?", "Confirmation",
+            var Ld = Core.Localizer.T;
+            if (MessageBox.Show(Ld("report.delete.confirm.pre") + _selectedItem.FileName + Ld("report.delete.confirm.suf"),
+                    Ld("report.delete.title"),
                     MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 try
@@ -258,11 +286,22 @@ namespace NettoyerPc
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Impossible de supprimer :\n{ex.Message}");
+                    MessageBox.Show(Ld("report.delete.error.pre") + ex.Message);
                 }
             }
         }
 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
+        // ── Chrome borderless ──────────────────────────────────────────────────────
+        private void Minimize_Click(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void Maximize_Click(object s, RoutedEventArgs e)
+            => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        private void CloseWin_Click(object s, RoutedEventArgs e) => Close();
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+            BtnMaximize.Content = WindowState == WindowState.Maximized ? "❐" : "⬜";
+        }
     }
 }

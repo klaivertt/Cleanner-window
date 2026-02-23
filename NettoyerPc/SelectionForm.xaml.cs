@@ -40,6 +40,9 @@ namespace NettoyerPc
             ["Suppression Windows Temp"]               = ("Vide C:\\Windows\\Temp. Fichiers temporaires systeme. Aucun risque.", "100% sur", true),
             ["Suppression Prefetch"]                   = ("Supprime les fichiers prefetch Windows. Windows les recree apres le prochain demarrage. Peut ralentir le premier demarrage.", "Sur", true),
             ["Suppression Thumbnails"]                 = ("Supprime le cache de miniatures de l Explorateur. Se recree en quelques secondes en parcourant vos dossiers.", "100% sur", true),
+            ["Rapports d'erreurs Windows (WER)"]       = ("Supprime les rapports d erreur Windows (WER) generes lors de plantages. Ces fichiers se recreent automatiquement.", "100% sur", true),
+            ["Cache icones Windows"]                   = ("Supprime le cache d icones Windows (iconcache.db). Se recree automatiquement par l Explorateur.", "100% sur", true),
+            ["Fichiers Crash Dumps"]                   = ("Supprime les crashdumps dans CrashDumps et Windows\\Minidump. Utile surtout apres des BSOD.", "Sur", true),
 
             // Navigateurs
             ["Fermeture navigateurs ouverts"]       = ("Ferme de force Chrome, Firefox, Edge, Brave, Vivaldi, Opera et Opera GX pour permettre la suppression de leurs fichiers verrous.", "100% sur", true),
@@ -53,8 +56,11 @@ namespace NettoyerPc
             // Gaming
             ["Steam cache (tous disques)"]             = ("Supprime le cache HTTP/appcache de Steam. Se recharge automatiquement. Vos jeux, saves et parametres ne sont pas touches.", "100% sur", true),
             ["DirectX Shader Cache"]                   = ("Supprime le cache de shaders DirectX/GPU (D3DSCache). Les shaders se recompilent au prochain lancement des jeux (quelques secondes). Aucun fichier de jeu touche.", "100% sur", true),
-            ["Epic Games / Battle.net"]                = ("Cache et logs Epic Games Launcher et Battle.net. Les jeux eux-memes ne sont pas touches.", "100% sur", true),
-
+            ["Epic Games / Battle.net"]                = ("Cache et logs Epic Games Launcher et Battle.net. Les jeux eux-memes ne sont pas touches.", "100% sur", true),            ["EA App / Origin (cache, logs)"]           = ("Cache et logs EA App et Origin. Vos jeux et sauvegardes ne sont pas touches.", "100% sur", true),
+            ["Ubisoft Connect (cache)"]                 = ("Cache et logs Ubisoft Connect. Vos jeux Ubisoft ne sont pas touches.", "100% sur", true),
+            ["GOG Galaxy (cache)"]                     = ("Cache GOG Galaxy Launcher. Vos jeux GOG ne sont pas touches.", "100% sur", true),
+            ["Riot Games / League (cache)"]             = ("Cache et logs Riot Client, League of Legends et Valorant. Vos comptes et skins ne sont pas touches.", "100% sur", true),
+            ["Minecraft (logs, crash reports)"]         = ("Logs et crash reports Minecraft Java/Bedrock. Vos mondes et sauvegardes ne sont pas touches.", "100% sur", true),
             // Apps tierces
             ["Discord (cache, code cache, GPU cache)"] = ("Cache GPU et code cache Discord. Discord continue de fonctionner normalement.", "100% sur", true),
             ["Spotify (storage cache)"]                = ("Cache de stockage Spotify. La musique sera re-streamee (normal). Vos playlists et telechargements hors-ligne ne sont pas touches.", "100% sur", true),
@@ -63,8 +69,14 @@ namespace NettoyerPc
             ["OBS Studio (logs)"]                      = ("Supprime uniquement les fichiers de log OBS. Vos scenes, configurations et enregistrements ne sont pas touches.", "100% sur", true),
             ["Steam (shader cache, logs, dumps)"]      = ("Shader cache, logs d erreur et fichiers crash dump Steam. Fichiers de jeux, saves et parametres conserves.", "100% sur", true),
             ["Epic Games (logs)"]                      = ("Fichiers de log Epic Games Launcher. Les jeux ne sont pas touches.", "100% sur", true),
-            ["Battle.net (cache)"]                     = ("Cache Battle.net Launcher. Les jeux Blizzard ne sont pas touches.", "100% sur", true),
-
+            ["Battle.net (cache)"]                     = ("Cache Battle.net Launcher. Les jeux Blizzard ne sont pas touches.", "100% sur", true),            ["Zoom (cache, logs)"]                     = ("Cache et logs Zoom. Vos reunions recentes et parametres ne sont pas touches.", "100% sur", true),
+            ["WhatsApp Desktop (cache)"]               = ("Cache WhatsApp Desktop. Vos messages et medias ne sont pas touches.", "100% sur", true),
+            ["Telegram Desktop (cache)"]               = ("Cache media Telegram Desktop. Vos messages sont conserves dans le cloud.", "100% sur", true),
+            ["Adobe Creative Cloud (cache)"]           = ("Cache Adobe (Media Cache, Logs, crash reports). Vos projets et fichiers sources ne sont pas touches.", "Sur", true),
+            ["Figma (cache)"]                          = ("Cache Figma Desktop. Vos projets cloud ne sont pas affectes.", "100% sur", true),
+            ["Notion (cache)"]                         = ("Cache local Notion. Vos donnees sont synchronisees dans le cloud.", "100% sur", true),
+            ["Twitch (cache)"]                         = ("Cache Twitch Desktop. Vos chaines favorites et parametres ne sont pas touches.", "100% sur", true),
+            ["VLC (cache, logs)"]                      = ("Cache de couverture d album et logs VLC. Vos medias ne sont pas touches.", "100% sur", true),
             // RÃ©seau
             ["Flush DNS"]                              = ("Vide le cache DNS local. Votre PC ira chercher les nouvelles adresses IP des sites. Aucun risque.", "100% sur", true),
             ["Configuration DNS Cloudflare"]           = ("Change votre DNS pour Cloudflare 1.1.1.1 (plus rapide et prive). Reversible a tout moment.", "Sur", true),
@@ -81,6 +93,8 @@ namespace NettoyerPc
             ["DÃ©fragmentation (tous disques)"]         = ("Defragmente les disques HDD et optimise les SSD (TRIM). Recommande sur les HDD pour de meilleures performances.", "Sur", true),
             ["Windows Update cache"]                   = ("Supprime les anciens fichiers de telechargement Windows Update. Liberation d espace sans risque.", "100% sur", true),
             ["DISM cleanup"]                           = ("Lance DISM /Cleanup-Image. Libere l espace occupe par les anciens composants Windows.", "Sur", true),
+            ["Cache Microsoft Store"]                  = ("Reinitialise le cache du Microsoft Store. Resout les problemes de telechargement d applications.", "100% sur", true),
+            ["Delivery Optimization"]                  = ("Supprime les fichiers Windows Update mis en cache pour la livraison optimisee. Peut liberer plusieurs Go.", "Sur", true),
 
             // Dev
             ["Scan .svn (tous disques)"]               = ("Supprime les dossiers .svn (anciens projets SVN). N affecte pas les projets actifs si vous n utilisez pas SVN.", "Modere", false),
@@ -127,7 +141,20 @@ namespace NettoyerPc
         {
             InitializeComponent();
             _engine = new CleaningEngine();
-            Loaded += (s, e) => BuildUI();
+            Loaded += (s, e) => { ApplyLanguage(); BuildUI(); };
+        }
+
+        private void ApplyLanguage()
+        {
+            var L = Localizer.T;
+            this.Title          = L("sel.window.title");
+            TxtSelTitle.Text    = L("sel.title");
+            TxtSelSubtitle.Text = L("sel.subtitle");
+            TxtSelSafe.Text     = L("sel.subtitle.safe");
+            BtnSelectAll.Content   = L("sel.select.all");
+            BtnDeselectAll.Content = L("sel.deselect.all");
+            BtnCancel.Content      = L("sel.cancel");
+            BtnStart.Content       = L("sel.launch");
         }
 
         private void BuildUI()
@@ -182,7 +209,7 @@ namespace NettoyerPc
                     Foreground = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
                     FontSize = 11, VerticalAlignment = VerticalAlignment.Center
                 };
-                countTxt.Text = $"{group.Count()} operation(s)";
+                countTxt.Text = group.Count() + Core.Localizer.T("sel.cat.count");
                 Grid.SetColumn(countTxt, 1);
 
                 headerRow.Children.Add(labelSP);
@@ -220,11 +247,11 @@ namespace NettoyerPc
                     };
                     var badgeText = risk switch
                     {
-                        "100% sur" => "âœ… 100% sur",
-                        "Sur"      => "âœ… Sur",
-                        "Modere"   => "âš  Modere",
-                        "Attention"=> "âš  Attention",
-                        _          => risk
+                        "100% sur"  => Core.Localizer.T("sel.badge.safe100"),
+                        "Sur"       => Core.Localizer.T("sel.badge.safe"),
+                        "Modere"    => Core.Localizer.T("sel.badge.moderate"),
+                        "Attention" => Core.Localizer.T("sel.badge.warning"),
+                        _           => risk
                     };
 
                     // RangÃ©e d'Ã©tape
@@ -319,7 +346,7 @@ namespace NettoyerPc
         private void UpdateCount()
         {
             var n = _allCheckBoxes.Count(c => c.IsChecked == true);
-            SelectionCount.Text = $"{n} operation(s) selectionnee(s)";
+            SelectionCount.Text = n + Localizer.T("sel.ops");
         }
 
         private void BtnSelectAll_Click(object sender, RoutedEventArgs e)
@@ -344,8 +371,8 @@ namespace NettoyerPc
 
             if (selected.Count == 0)
             {
-                MessageBox.Show("Veuillez selectionner au moins une operation.",
-                    "Aucune selection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Core.Localizer.T("sel.nosel.body"),
+                    Core.Localizer.T("sel.nosel.title"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -355,10 +382,10 @@ namespace NettoyerPc
                 .ToList();
             if (attentionSteps.Count > 0)
             {
-                var msg = "Les operations suivantes demandent votre confirmation :\n\n" +
-                          string.Join("\n", attentionSteps.Select(s => "  â€¢ " + s)) +
-                          "\n\nCes operations sont plus agressives. Continuer ?";
-                if (MessageBox.Show(msg, "Confirmation", MessageBoxButton.YesNo,
+                var msg = Core.Localizer.T("sel.warn.prefix") +
+                          string.Join("\n", attentionSteps.Select(s => "  \u2022 " + s)) +
+                          Core.Localizer.T("sel.warn.suffix");
+                if (MessageBox.Show(msg, Core.Localizer.T("sel.warn.title"), MessageBoxButton.YesNo,
                         MessageBoxImage.Warning) != MessageBoxResult.Yes)
                     return;
             }
@@ -374,6 +401,22 @@ namespace NettoyerPc
             Confirmed = false;
             DialogResult = false;
             Close();
+        }
+
+        // ── Chrome borderless ─────────────────────────────────
+        private void Minimize_Click(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void Maximize_Click(object s, RoutedEventArgs e)
+            => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        private void CloseWin_Click(object s, RoutedEventArgs e)
+        {
+            Confirmed = false;
+            DialogResult = false;
+            Close();
+        }
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+            BtnMaximize.Content = WindowState == WindowState.Maximized ? "❑" : "☐";
         }
     }
 }

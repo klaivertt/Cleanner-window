@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 
 namespace NettoyerPc
 {
@@ -14,32 +18,241 @@ namespace NettoyerPc
         public MainForm()
         {
             InitializeComponent();
-            Loaded += (s, e) => LoadLastReportStats();
+            // Restore window geometry
+            var prefs = Core.UserPreferences.Current;
+            if (!double.IsNaN(prefs.WindowLeft))
+            {
+                Left   = prefs.WindowLeft;
+                Top    = prefs.WindowTop;
+                Width  = prefs.WindowWidth;
+                Height = prefs.WindowHeight;
+            }
+            if (prefs.WindowMaximized)
+                WindowState = WindowState.Maximized;
+
+            Loaded += (s, e) =>
+            {
+                Core.Localizer.SetLanguage(prefs.Language);
+                ApplyLanguage();
+                LoadLastReportStats();
+            };
         }
+
+        // ── Fenêtre borderless : chrome + état maximum ─────────────────────────────────
+        private void Minimize_Click(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void Maximize_Click(object s, RoutedEventArgs e)
+            => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        private void CloseWin_Click(object s, RoutedEventArgs e) => Close();
+
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+            BtnMaximize.Content = WindowState == WindowState.Maximized ? "❐" : "⬜";
+            // Fix : empêche le débordement sous la barre des tâches en mode maximisé
+            RootGrid.Margin = WindowState == WindowState.Maximized ? new Thickness(6) : new Thickness(0);
+        }
+
+        // ── Préférences : sauvegarde position / taille ─────────────────────────────────
+        private void MainForm_Closing(object sender, CancelEventArgs e)
+        {
+            var prefs = Core.UserPreferences.Current;
+            prefs.WindowMaximized = WindowState == WindowState.Maximized;
+            if (WindowState == WindowState.Normal)
+            {
+                prefs.WindowLeft   = Left;
+                prefs.WindowTop    = Top;
+                prefs.WindowWidth  = Width;
+                prefs.WindowHeight = Height;
+            }
+            prefs.Save();
+        }
+
+        // ── Mise à jour des pilotes ────────────────────────────────────────────────────
+        private void BtnDriverUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo("ms-settings:windowsupdate-optionalupdates")
+                    { UseShellExecute = true });
+            }
+            catch
+            {
+                Process.Start(new ProcessStartInfo("ms-settings:windowsupdate")
+                    { UseShellExecute = true });
+            }
+        }
+
+        private void BtnDriverScan_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "pnputil.exe",
+                    Arguments              = "/enum-devices /problem",
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true,
+                    RedirectStandardOutput = true,
+                };
+                var proc   = Process.Start(psi);
+                var output = proc?.StandardOutput.ReadToEnd() ?? "";
+                proc?.WaitForExit(8000);
+
+                if (string.IsNullOrWhiteSpace(output) || output.Trim().Length < 30)
+                    MessageBox.Show("Aucun pilote problématique détecté.\nTous vos composants fonctionnent correctement.",
+                        "Diagnostic Pilotes ✓", MessageBoxButton.OK, MessageBoxImage.Information);
+                else
+                    MessageBox.Show(output.Length > 2500 ? output[..2500] + "\n..." : output,
+                        "Diagnostic Pilotes — Composants avec problèmes", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Impossible d'exécuter le diagnostic : {ex.Message}\n\nOuvrez 'Gestionnaire de périphériques' manuellement.",
+                    "Diagnostic", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // ── Traduction de cette fenêtre ────────────────────────────────────────
+        public void ApplyLanguage()
+        {
+            var L = Core.Localizer.T;
+
+            TxtSubtitle.Text       = L("app.subtitle");
+            BtnSettings.Content    = L("btn.settings");
+            BtnCheckUpdate.Content = L("btn.updates");
+
+            // Custom card
+            TxtCustomTitle.Text = L("card.custom.title");
+            TxtCustomBadge.Text = L("card.custom.badge");
+            TxtCustomBody.Text  = L("card.custom.body");
+            BtnCustom.Content   = L("btn.custom");
+
+            // Quick clean
+            TxtQuickTitle.Text = L("card.quick.title");
+            TxtQuickBadge.Text = L("card.quick.badge.safe");
+            TxtQuickTime.Text  = L("card.quick.time");
+            SetInlines(TxtQuickBody,  RichList(L("card.quick.s1.label"),    "#6BBBFF", L("card.quick.s1.items")));
+            SetInlines(TxtQuickNever, RichLine(L("card.quick.never.label"), "#4EC98C", L("card.quick.never.items")));
+            BtnComplete.Content = L("btn.quick");
+
+            // Gaming
+            TxtGamingTitle.Text = L("card.gaming.title");
+            TxtGamingBadge.Text = L("card.gaming.badge");
+            TxtGamingTime.Text  = L("card.gaming.time");
+            SetInlines(TxtGamingBody1, RichList(L("card.gaming.s1.label"),    "#6BBBFF", L("card.gaming.s1.items")));
+            SetInlines(TxtGamingBody2, RichList(L("card.gaming.s2.label"),    "#FFB830", L("card.gaming.s2.items")));
+            SetInlines(TxtGamingNever, RichLine(L("card.gaming.never.label"), "#4EC98C", L("card.gaming.never.items")));
+            BtnGamingDisk.Content = L("btn.gaming");
+
+            // Deep clean
+            TxtDeepTitle.Text = L("card.deep.title");
+            TxtDeepBadge.Text = L("card.deep.badge");
+            TxtDeepTime.Text  = L("card.deep.time");
+            SetInlines(TxtDeepBody, RichList(L("card.deep.s1.label"),   "#6BBBFF", L("card.deep.s1.items")));
+            SetInlines(TxtDeepInfo, RichLine(L("card.deep.info.label"), "#FFB830", L("card.deep.info.text")));
+            BtnDeepClean.Content = L("btn.deep");
+
+            // System optimisation
+            TxtSysTitle.Text = L("card.sysopt.title");
+            TxtSysBadge.Text = L("card.sysopt.badge");
+            SetInlines(TxtSysBody, RichList(L("card.sysopt.s1.label"),  "#6BBBFF", L("card.sysopt.s1.items")));
+            SetInlines(TxtSysDur,  RichLine(L("card.sysopt.dur.label"), "#4AACFF", L("card.sysopt.dur.text")));
+            BtnSysOpt.Content = L("btn.sysopt");
+
+            // Driver update card
+            TxtDriverTitle.Text = L("card.driver.title");
+            TxtDriverBadge.Text = L("card.driver.badge");
+            SetInlines(TxtDriverBody, RichList(L("card.driver.s1.label"), "#6BBBFF", L("card.driver.s1.items")));
+            BtnDriverUpdate.Content = L("btn.driver.update");
+            BtnDriverScan.Content   = L("btn.driver.scan");
+
+            // Third-party caches
+            TxtThirdTitle.Text = L("card.thirdparty.title");
+            TxtThirdBadge.Text = L("card.thirdparty.badge");
+            SetInlines(TxtThirdBody, RichList(L("card.thirdparty.intro"), "#AAAACC", L("card.thirdparty.items")));
+            BtnThirdParty.Content = L("btn.thirdparty");
+
+            // Bloatware
+            TxtBloatTitle.Text = L("card.bloat.title");
+            TxtBloatBadge.Text = L("card.bloat.badge");
+            SetInlines(TxtBloatBody, new Inline[]
+            {
+                new Run(L("card.bloat.body")),
+                new LineBreak(),
+                new Bold(new Run(L("card.bloat.warning"))) { Foreground = Clr("#FF9933") }
+            });
+            BtnBloatware.Content = L("btn.bloat");
+        }
+
+        // ── Helpers Inline ─────────────────────────────────────────────────────
+        private static SolidColorBrush Clr(string hex) =>
+            (SolidColorBrush)new BrushConverter().ConvertFrom(hex)!;
+
+        private static Bold Bld(string text, string hex) =>
+            new Bold(new Run(text)) { Foreground = Clr(hex) };
+
+        private static void SetInlines(TextBlock tb, IEnumerable<Inline> inlines)
+        {
+            tb.Inlines.Clear();
+            foreach (var i in inlines) tb.Inlines.Add(i);
+        }
+
+        private static IEnumerable<Inline> RichList(string label, string color, string items)
+        {
+            var result = new List<Inline> { Bld(label, color) };
+            foreach (var line in items.Split('\n'))
+            {
+                result.Add(new LineBreak());
+                result.Add(new Run("  " + line));
+            }
+            return result;
+        }
+
+        private static IEnumerable<Inline> RichLine(string label, string color, string text) =>
+            new Inline[] { Bld(label, color), new Run(" " + text) };
 
         private void LoadLastReportStats()
         {
             try
             {
                 var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-                var latest = Directory.Exists(reportDir)
-                    ? Directory.GetFiles(reportDir, "*.json").OrderByDescending(f => f).FirstOrDefault()
-                    : null;
+                if (!Directory.Exists(reportDir)) return;
 
-                if (latest != null)
+                var allFiles = Directory.GetFiles(reportDir, "*.json");
+                if (allFiles.Length == 0) return;
+
+                long totalFiles = 0, totalSpace = 0;
+                DateTime lastDate = DateTime.MinValue;
+                long lastSpace = 0;
+
+                foreach (var f in allFiles)
                 {
-                    using var doc = JsonDocument.Parse(File.ReadAllText(latest));
-                    var root = doc.RootElement;
-                    var date  = root.GetProperty("startTime").GetDateTime();
-                    var space = root.GetProperty("totalSpaceFreed").GetInt64();
-                    var files = root.GetProperty("totalFilesDeleted").GetInt32();
-                    TxtLastCleanup.Text = $"Dernier nettoyage : {date:dd/MM/yyyy à HH:mm}  |  {Core.CleaningReport.FormatBytes(space)} liberes  |  {files:N0} fichiers";
-
-                    var count = Directory.GetFiles(reportDir, "*.json").Length;
-                    BtnReports.Content = $"Rapports ({count})";
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(File.ReadAllText(f));
+                        var root = doc.RootElement;
+                        if (root.TryGetProperty("totalFilesDeleted", out var fi)) totalFiles += fi.GetInt64();
+                        if (root.TryGetProperty("totalSpaceFreed",   out var sp)) totalSpace += sp.GetInt64();
+                        if (root.TryGetProperty("startTime", out var dt))
+                        {
+                            var d = dt.GetDateTime();
+                            if (d > lastDate)
+                            {
+                                lastDate = d;
+                                lastSpace = root.TryGetProperty("totalSpaceFreed", out var ls) ? ls.GetInt64() : 0;
+                            }
+                        }
+                    }
+                    catch { }
                 }
+
+                BtnReports.Content  = $"📊 {Core.Localizer.T("btn.reports")} ({allFiles.Length})";
+                var L = Core.Localizer.T;
+                TxtLastCleanup.Text = lastDate > DateTime.MinValue
+                    ? $"{L("main.last.prefix")}{lastDate:dd/MM/yyyy}  \u00b7  {Core.CleaningReport.FormatBytes(lastSpace)}{L("main.last.freed")}  \u00b7  {L("main.last.cumul")}{totalFiles:N0}{L("main.last.files")}  \u00b7  {Core.CleaningReport.FormatBytes(totalSpace)}"
+                    : "";
             }
-            catch { /* ignore — pas de rapport */ }
+            catch { /* ignore */ }
         }
 
         private void BtnComplete_Click(object sender, RoutedEventArgs e)
@@ -50,17 +263,7 @@ namespace NettoyerPc
 
         private void BtnDeepClean_Click(object sender, RoutedEventArgs e)
         {
-            if (!Confirm(
-                "NETTOYAGE DE PRINTEMPS\n\n" +
-                "Ce nettoyage inclut :\n" +
-                "  - Tout le nettoyage rapide\n" +
-                "  - Caches developpeur (npm, pip, gradle, NuGet)\n" +
-                "  - Cache Windows Update (anciens fichiers)\n" +
-                "  - Defragmentation et DISM\n" +
-                "  - Navigateurs (Chrome, Firefox, Edge, Brave, Vivaldi, Opera GX)\n\n" +
-                "Les caches dev (npm, pip...) se re-telechargeront au prochain build.\n" +
-                "Un point de restauration sera cree automatiquement.\n\n" +
-                "Duree : 60-120 minutes. Continuer ?"))
+            if (!Confirm(Core.Localizer.T("main.deepclean.confirm")))
                 return;
 
             OfferForceClose();
@@ -74,23 +277,23 @@ namespace NettoyerPc
 
             LaunchCleaningCustomModules(new HashSet<string>
             {
-                // Caches gaming (100% sÃ»r - se recrÃ©e)
+                // Caches gaming (100% sûr - se recrée)
                 "Steam (shader cache, logs, dumps)",
                 "Epic Games (logs)",
                 "Battle.net (cache)",
                 "Steam cache (tous disques)",
                 "DirectX Shader Cache",
                 "Epic Games / Battle.net",
-                // Caches apps (pas l'app elle-mÃªme)
+                // Caches apps (pas l'app elle-même)
                 "Discord (cache, code cache, GPU cache)",
                 "Spotify (storage cache)",
                 "OBS Studio (logs)",
                 // Optimisation disque
                 "Optimisation/TRIM tous les disques",
-                "VÃ©rification erreurs disques (chkdsk)",
-                "DÃ©fragmentation intelligente (disques HDD)",
+                "Vérification erreurs disques (chkdsk)",
+                "Défragmentation intelligente (disques HDD)",
                 "TRIM disques SSD",
-                // Nettoyage de base sÃ»r
+                // Nettoyage de base sûr
                 "Suppression TEMP utilisateur",
                 "Suppression Windows Temp",
                 "Suppression Thumbnails",
@@ -100,15 +303,7 @@ namespace NettoyerPc
 
         private void BtnAdvanced_Click(object sender, RoutedEventArgs e)
         {
-            if (!Confirm(
-                "MODE AVANCE - NETTOYAGE PROFOND\n\n" +
-                "Ce mode inclut absolument tout :\n" +
-                "  - Nettoyage complet + gaming + apps tierces\n" +
-                "  - Optimisation systeme (SFC, DISM, reseau)\n" +
-                "  - Suppression bloatwares Windows\n" +
-                "  - Creation point de restauration automatique\n\n" +
-                "Duree estimee : 90-180 minutes\n\n" +
-                "Continuer ?"))
+            if (!Confirm(Core.Localizer.T("main.advanced.confirm")))
                 return;
 
             OfferForceClose();
@@ -117,44 +312,22 @@ namespace NettoyerPc
 
         private void BtnSysOpt_Click(object sender, RoutedEventArgs e)
         {
-            if (Confirm(
-                "âš™ RÃ‰PARATION ET OPTIMISATION SYSTÃˆME\n\n" +
-                "7 Ã©tapes :\n" +
-                "  â€¢ SFC /scannow â€” vÃ©rifie l'intÃ©gritÃ© des fichiers Windows\n" +
-                "  â€¢ DISM /RestoreHealth â€” rÃ©pare l'image Windows\n" +
-                "  â€¢ DISM StartComponentCleanup â€” libÃ¨re espace WinSxS\n" +
-                "  â€¢ Reset rÃ©seau complet + DNS Cloudflare 1.1.1.1\n" +
-                "  â€¢ Rebuild cache polices\n" +
-                "  â€¢ TRIM / DÃ©fragmentation tous les disques\n\n" +
-                "â„¹ SFC et DISM peuvent durer 30 Ã  90 minutes.\n" +
-                "Votre PC reste utilisable pendant l'opÃ©ration.\n\n" +
-                "Continuer ?"))
+            if (Confirm(Core.Localizer.T("main.sysopt.confirm")))
                 LaunchCleaning(Core.CleaningMode.SystemOptimization);
         }
 
         private void BtnBloatware_Click(object sender, RoutedEventArgs e)
         {
-            if (Confirm(
-                "âš  SUPPRESSION BLOATWARES\n\n" +
-                "Les applications suivantes seront supprimÃ©es DÃ‰FINITIVEMENT :\n" +
-                "  â€¢ Candy Crush et jeux King\n" +
-                "  â€¢ Facebook, Instagram, TikTok\n" +
-                "  â€¢ Xbox GameBar (raccourci Win+G ne fonctionnera plus)\n" +
-                "  â€¢ Cortana, Bing Search\n" +
-                "  â€¢ Netflix, Microsoft Solitaire, Clipchamp\n" +
-                "  â€¢ Mixed Reality Portal\n" +
-                "  + DÃ©sactivation de la tÃ©lÃ©mÃ©trie Microsoft\n\n" +
-                "âŒ Vos jeux et applications tierces (Steam, Epic, etc.) ne sont PAS affectÃ©s.\n\n" +
-                "Continuer ?"))
+            if (Confirm(Core.Localizer.T("main.bloat.confirm")))
                 LaunchCleaningCustomModules(new HashSet<string>
                 {
-                    "Analyse bloatwares installÃ©s",
+                    "Analyse bloatwares installes",
                     "Suppression Candy Crush / Jeux King",
                     "Suppression Apps sociales (Facebook, Instagram, TikTok)",
                     "Suppression Xbox GameBar / Mixed Reality",
                     "Suppression Cortana / Bing Search",
                     "Suppression Netflix / Microsoft Solitaire",
-                    "DÃ©sactivation tÃ©lÃ©mÃ©trie Windows",
+                    "Desactivation telemetrie Windows",
                 });
         }
 
@@ -189,12 +362,19 @@ namespace NettoyerPc
 
         private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
         {
-            var updateForm = new UpdateCheckForm();
-            updateForm.Owner = this;
-            updateForm.ShowDialog();
+            var form = new UpdateCheckForm();
+            form.ShowDialog();
         }
 
-        // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var form = new SettingsForm { Owner = this };
+            form.ShowDialog();
+            ApplyLanguage();        // rafraîchit si langue changée
+            LoadLastReportStats();  // rafraîchit si rapports supprimés
+        }
+
+        // Helpers
 
         private void LaunchCleaning(Core.CleaningMode mode)
         {
@@ -202,6 +382,7 @@ namespace NettoyerPc
             Hide();
             form.ShowDialog();
             Show();
+            LoadLastReportStats();
         }
 
         private void LaunchCleaningCustomModules(HashSet<string> steps)
@@ -210,6 +391,7 @@ namespace NettoyerPc
             Hide();
             form.ShowDialog();
             Show();
+            LoadLastReportStats();
         }
 
         private bool Confirm(string message)
@@ -233,11 +415,9 @@ namespace NettoyerPc
             if (running.Count == 0) return;
 
             var list = string.Join("\n", running.Take(10).Select(n => $"  - {n}"));
-            var msg  = $"Les applications suivantes sont ouvertes :\n\n{list}\n\n" +
-                       "Les fermer maintenant pour un nettoyage plus complet ?\n" +
-                       "(Vous pourrez les rouvrir apres le nettoyage)";
+            var msg  = string.Format(Core.Localizer.T("main.forceclose.body"), list);
 
-            var result = MessageBox.Show(msg, "Applications ouvertes",
+            var result = MessageBox.Show(msg, Core.Localizer.T("main.forceclose.title"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result == MessageBoxResult.Yes)
             {

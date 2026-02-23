@@ -1,9 +1,8 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NettoyerPc", "NettoyerPc\NettoyerPc.csproj", "{8D9C6B5E-7A2C-4F3E-9B1D-5C8F6A2E3D4B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PCClean", "NettoyerPc\PCClean.csproj", "{8D9C6B5E-7A2C-4F3E-9B1D-5C8F6A2E3D4B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

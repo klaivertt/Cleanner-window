@@ -1,11 +1,18 @@
 ﻿<Window x:Class="NettoyerPc.ReportViewerForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Rapports de nettoyage"
+        x:Name="RvWindow" Title="Rapports de nettoyage"
         Height="760" Width="1100"
         MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         Background="#1E1E2E">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" ResizeBorderThickness="6"
+                      UseAeroCaptionButtons="False" GlassFrameThickness="0"/>
+    </WindowChrome.WindowChrome>
 
     <Window.Resources>
         <Style x:Key="StatCard" TargetType="Border">
@@ -47,24 +54,37 @@
         </Grid.RowDefinitions>
 
         <!-- EN-TETE -->
-        <Border Grid.Row="0" Background="#12121F" Padding="24,16">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Rapports de nettoyage" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock x:Name="TxtSubtitle" Text="Historique de vos sessions de nettoyage"
-                               FontSize="12" Foreground="#888" Margin="0,3,0,0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BtnOpenFolder" Content="Ouvrir le dossier" Click="BtnOpenFolder_Click"
-                            Style="{StaticResource Btn}" Background="#2A2A3E" Margin="0,0,8,0"/>
-                    <Button Content="Fermer" Click="BtnClose_Click"
-                            Style="{StaticResource Btn}" Background="#8B1A1A"/>
-                </StackPanel>
-            </Grid>
+        <Border Grid.Row="0" Background="#12121F">
+            <StackPanel>
+                <!-- Barre titre -->
+                <Grid Height="32">
+                    <TextBlock Text="PC Clean" FontSize="10" Foreground="#44446A"
+                               VerticalAlignment="Center" Margin="24,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Stretch">
+                        <Button Content="&#x2013;" Style="{StaticResource ChromeBtn}" Click="Minimize_Click"/>
+                        <Button x:Name="BtnMaximize" Content="&#x2610;" Style="{StaticResource ChromeBtn}" Click="Maximize_Click"/>
+                        <Button Content="&#x2715;" Style="{StaticResource ChromeCloseBtn}" Click="CloseWin_Click"/>
+                    </StackPanel>
+                </Grid>
+                <!-- Contenu en-tête -->
+                <Grid Margin="24,0,24,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtRvHeader" Text="Rapports de nettoyage" FontSize="22" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock x:Name="TxtSubtitle" Text="Historique de vos sessions de nettoyage"
+                                   FontSize="12" Foreground="#888" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnOpenFolder" Content="Ouvrir le dossier" Click="BtnOpenFolder_Click"
+                                Style="{StaticResource Btn}" Background="#2A2A3E" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnCloseRv" Content="Fermer" Click="BtnClose_Click"
+                                Style="{StaticResource Btn}" Background="#8B1A1A"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- CONTENU PRINCIPAL -->
@@ -78,7 +98,7 @@
             <Border Grid.Column="0" Background="#12121F" BorderBrush="#2A2A3E" BorderThickness="0,0,1,0">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Padding="16,12,16,8">
-                        <TextBlock Text="Historique" FontSize="13" FontWeight="SemiBold" Foreground="#AAAACC"/>
+                        <TextBlock x:Name="TxtSidebarHistory" Text="Historique" FontSize="13" FontWeight="SemiBold" Foreground="#AAAACC"/>
                     </Border>
                     <Border DockPanel.Dock="Bottom" Padding="12,10" Background="#0D0D1A">
                         <Button x:Name="BtnDeleteReport" Content="Supprimer ce rapport" Click="BtnDeleteReport_Click"
@@ -121,9 +141,9 @@
                 <Grid>
                     <!-- Placeholder quand rien n'est sélectionné -->
                     <StackPanel x:Name="PlaceholderPanel" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="Sélectionnez un rapport" FontSize="20"
+                        <TextBlock x:Name="TxtPlaceholder1" Text="Sélectionnez un rapport" FontSize="20"
                                    Foreground="#555" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Choisissez un rapport dans la liste pour voir les statistiques"
+                        <TextBlock x:Name="TxtPlaceholder2" Text="Choisissez un rapport dans la liste pour voir les statistiques"
                                    FontSize="13" Foreground="#444" Margin="0,8,0,0" HorizontalAlignment="Center"/>
                     </StackPanel>
 
@@ -149,31 +169,31 @@
 
                                 <Border Grid.Column="0" Style="{StaticResource StatCard}" Background="#0D2A1A">
                                     <StackPanel>
-                                        <TextBlock Text="ESPACE LIBERE" FontSize="10" Foreground="#4EC98C" FontWeight="Bold" Margin="0,0,0,6"/>
+                                        <TextBlock x:Name="TxtStatSpaceLabel" Text="ESPACE LIBERE" FontSize="10" Foreground="#4EC98C" FontWeight="Bold" Margin="0,0,0,6"/>
                                         <TextBlock x:Name="StatSpace" Text="—" FontSize="26" FontWeight="Bold" Foreground="#5AE896"/>
-                                        <TextBlock Text="sur tous les disques" FontSize="10" Foreground="#4EC98C" Margin="0,4,0,0"/>
+                                        <TextBlock x:Name="TxtStatSpaceSub" Text="sur tous les disques" FontSize="10" Foreground="#4EC98C" Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Border>
 
                                 <Border Grid.Column="1" Style="{StaticResource StatCard}" Background="#0D1F3C" Margin="0,0,12,0">
                                     <StackPanel>
-                                        <TextBlock Text="FICHIERS SUPPRIMES" FontSize="10" Foreground="#4AACFF" FontWeight="Bold" Margin="0,0,0,6"/>
+                                        <TextBlock x:Name="TxtStatFilesLabel" Text="FICHIERS SUPPRIMES" FontSize="10" Foreground="#4AACFF" FontWeight="Bold" Margin="0,0,0,6"/>
                                         <TextBlock x:Name="StatFiles" Text="—" FontSize="26" FontWeight="Bold" Foreground="#6BBBFF"/>
-                                        <TextBlock Text="fichiers temporaires" FontSize="10" Foreground="#4AACFF" Margin="0,4,0,0"/>
+                                        <TextBlock x:Name="TxtStatFilesSub" Text="fichiers temporaires" FontSize="10" Foreground="#4AACFF" Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Border>
 
                                 <Border Grid.Column="2" Style="{StaticResource StatCard}" Background="#2A1A00" Margin="0,0,12,0">
                                     <StackPanel>
-                                        <TextBlock Text="DUREE TOTALE" FontSize="10" Foreground="#FFB830" FontWeight="Bold" Margin="0,0,0,6"/>
+                                        <TextBlock x:Name="TxtStatDurLabel" Text="DUREE TOTALE" FontSize="10" Foreground="#FFB830" FontWeight="Bold" Margin="0,0,0,6"/>
                                         <TextBlock x:Name="StatDuration" Text="—" FontSize="26" FontWeight="Bold" Foreground="#FFD060"/>
-                                        <TextBlock Text="minutes" FontSize="10" Foreground="#FFB830" Margin="0,4,0,0"/>
+                                        <TextBlock x:Name="TxtStatDurSub" Text="minutes" FontSize="10" Foreground="#FFB830" Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Border>
 
                                 <Border Grid.Column="3" Style="{StaticResource StatCard}" Background="#1A1A3A" Margin="0,0,12,0">
                                     <StackPanel>
-                                        <TextBlock Text="ETAPES" FontSize="10" Foreground="#AA88FF" FontWeight="Bold" Margin="0,0,0,6"/>
+                                        <TextBlock x:Name="TxtStatStepsLabel" Text="ETAPES" FontSize="10" Foreground="#AA88FF" FontWeight="Bold" Margin="0,0,0,6"/>
                                         <TextBlock x:Name="StatSteps" Text="—" FontSize="26" FontWeight="Bold" Foreground="#CC99FF"/>
                                         <TextBlock x:Name="StatStepsSub" Text="operations" FontSize="10" Foreground="#AA88FF" Margin="0,4,0,0"/>
                                     </StackPanel>
@@ -181,7 +201,7 @@
                             </Grid>
 
                             <!-- TITRE SECTION ETAPES -->
-                            <TextBlock Text="Détail des opérations" FontSize="14" FontWeight="Bold"
+                            <TextBlock x:Name="TxtDetailTitle" Text="Détail des opérations" FontSize="14" FontWeight="Bold"
                                        Foreground="#AAAACC" Margin="0,0,0,12"/>
 
                             <!-- LISTE ETAPES -->
@@ -193,7 +213,7 @@
                     <!-- Contenu TXT (legacy) -->
                     <Border x:Name="TxtPanel" Visibility="Collapsed" Padding="24,20">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="Rapport texte (ancien format)"
+                            <TextBlock x:Name="TxtLegacyTitle" DockPanel.Dock="Top" Text="Rapport texte (ancien format)"
                                        Foreground="#666" FontSize="12" Margin="0,0,0,12"/>
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                                 <TextBox x:Name="ReportContent" FontFamily="Consolas" FontSize="12"
