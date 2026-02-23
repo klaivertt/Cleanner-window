@@ -30,6 +30,7 @@ namespace NettoyerPc
             ["security"]   = ("Securite (antivirus)",                  "#1A3A6B", true),
             ["advanced"]   = ("Nettoyage avance / Restauration",       "#4A2A00", false),
             ["bloatware"]  = ("Suppression Bloatwares (desinstalle!)", "#6B2A00", false),
+            ["drivers"]    = ("Pilotes GPU/CPU — caches & logs",       "#1A3A5A", true),
         };
 
         // â”€â”€â”€ Descriptions par Ã©tape â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -73,6 +74,12 @@ namespace NettoyerPc
             ["WhatsApp Desktop (cache)"]               = ("Cache WhatsApp Desktop. Vos messages et medias ne sont pas touches.", "100% sur", true),
             ["Telegram Desktop (cache)"]               = ("Cache media Telegram Desktop. Vos messages sont conserves dans le cloud.", "100% sur", true),
             ["Adobe Creative Cloud (cache)"]           = ("Cache Adobe (Media Cache, Logs, crash reports). Vos projets et fichiers sources ne sont pas touches.", "Sur", true),
+
+            // Suites bureautiques
+            ["Microsoft Office (cache, temp, MRU)"]    = ("Fichiers temporaires Word/Excel/PowerPoint/Outlook/OneNote, cache MRU recents et cache ClickToRun. Vos documents .docx/.xlsx/.pptx, templates, macros et .ost/.pst ne sont PAS touches.", "100% sur", true),
+            ["LibreOffice / OpenOffice (cache, temp)"] = ("Cache et verrous temporaires LibreOffice et OpenOffice. Vos documents, macros Basic et templates (.ott/.otg) ne sont PAS touches.", "100% sur", true),
+            ["WPS Office (cache)"]                     = ("Cache et logs WPS Office (Kingsoft). Vos documents et templates ne sont PAS touches.", "100% sur", true),
+
             ["Figma (cache)"]                          = ("Cache Figma Desktop. Vos projets cloud ne sont pas affectes.", "100% sur", true),
             ["Notion (cache)"]                         = ("Cache local Notion. Vos donnees sont synchronisees dans le cloud.", "100% sur", true),
             ["Twitch (cache)"]                         = ("Cache Twitch Desktop. Vos chaines favorites et parametres ne sont pas touches.", "100% sur", true),
@@ -95,6 +102,10 @@ namespace NettoyerPc
             ["DISM cleanup"]                           = ("Lance DISM /Cleanup-Image. Libere l espace occupe par les anciens composants Windows.", "Sur", true),
             ["Cache Microsoft Store"]                  = ("Reinitialise le cache du Microsoft Store. Resout les problemes de telechargement d applications.", "100% sur", true),
             ["Delivery Optimization"]                  = ("Supprime les fichiers Windows Update mis en cache pour la livraison optimisee. Peut liberer plusieurs Go.", "Sur", true),
+            ["Logs CBS & installation Windows"]         = ("Supprime les logs CBS (Component Based Servicing), DISM, MoSetup et WindowsUpdate. Se recreent automatiquement.", "100% sur", true),
+            ["Lancer la mise \u00e0 jour Windows"]          = ("Declenche UsoClient StartScan + StartDownload puis ouvre la page Parametres Windows Update. Necessite une connexion internet.", "Sur", true),
+            ["Windows.old (restes mise \u00e0 niveau)"]     = ("Supprime C:\\Windows.old si present. Peut liberer 5 a 20+ Go. Aucune application ou donnee en cours n est touchee.", "Sur", false),
+            ["R\u00e9initialiser l'index de recherche"]     = ("Arrete WSearch, supprime la base de l index de recherche, re-demarre la reconstruction automatique. La recherche peut etre lente quelques minutes.", "Modere", false),
 
             // Dev
             ["Scan .svn (tous disques)"]               = ("Supprime les dossiers .svn (anciens projets SVN). N affecte pas les projets actifs si vous n utilisez pas SVN.", "Modere", false),
@@ -105,6 +116,12 @@ namespace NettoyerPc
             ["VS Code cache (tous disques)"]           = ("Supprime les caches de VS Code (cache GPU, CachedData, logs). VS Code continue de fonctionner normalement. Ne supprime PAS vos parametres ou extensions.", "100% sur", true),
             ["Docker system prune"]                    = ("Lance 'docker system prune' : supprime les images, conteneurs et volumes Docker inutilises. A utiliser avec prudence.", "Attention", false),
 
+            // IDEs
+            ["JetBrains IDEs (caches, logs)"]          = ("Cache disque et logs de toutes les IDEs JetBrains (IntelliJ, PyCharm, WebStorm, Rider, CLion, DataGrip, GoLand, PhpStorm). Vos projets, parametres et plugins ne sont PAS touches.", "100% sur", true),
+            ["Eclipse / NetBeans (cache)"]             = ("Cache .tmp Eclipse + cache NetBeans/OpenBeans. Vos workspaces, projets et plugins ne sont PAS touches.", "100% sur", true),
+            ["Android Studio (caches)"]                = ("Caches IDE Android Studio + logs Gradle daemon + snapshots AVD (regenerables). Vos projets, keystore et fichiers source ne sont PAS touches.", "100% sur", true),
+            ["Cursor IDE (cache)"]                     = ("Cache Cursor IDE (fork VS Code). Vos parametres, extensions et keybindings ne sont PAS touches.", "100% sur", true),
+
             // Sysopt
             ["Nettoyage packages Windows (DISM StartComponentCleanup)"] = ("Libere l espace occupe par les anciens composants Windows Update. Peut durer 15-30 min.", "Sur", false),
             ["SFC /scannow (vÃ©rification intÃ©gritÃ© fichiers)"]          = ("Verifie et repare les fichiers systeme Windows corrompu. Necessite les droits admin. Duree : 15-45 min.", "Sur", false),
@@ -113,6 +130,12 @@ namespace NettoyerPc
             ["Reset rÃ©seau complet (Winsock, IP, DNS)"]                 = ("Reinitialise completement la pile reseau. Utile si vous avez des problemes internet persistants.", "Modere", false),
             ["Optimisation/TRIM tous les disques"]                      = ("Lance defrag /O sur tous les disques (TRIM pour SSD, defrag intelligente pour HDD).", "Sur", true),
             ["VÃ©rification erreurs disques (chkdsk)"]                   = ("Lance chkdsk /scan sur C: (ne bloque pas le PC, juste une analyse).", "100% sur", true),
+
+            // SysOpt — nouvelles optimisations Windows
+            ["Optimiser le plan d'alimentation"]        = ("Force le plan d alimentation Equilibre Windows. Recommande sur les portables et les desktops pour le bon compromis perf/energie.", "100% sur", true),
+            ["Désactiver l'hibernation (hiberfil.sys)"]  = ("Libere l espace occupe par hiberfil.sys (= taille de votre RAM, soit 8-64 Go). Attention : desactive la mise en veille prolongee (Hibernate). Le mode Veille (Sleep/S3) reste disponible.", "Attention", false),
+            ["Désactiver partage Windows Update (WUDO)"] = ("Limite la livraison des mises a jour Windows au reseau local seulement (desactive le partage P2P avec internet). Ameliore la vie privee.", "100% sur", true),
+            ["Purger les tâches planifiées obsolètes"]   = ("Supprime les taches planifiees laissees par des applications desinstallees (Google Update, Adobe GC, CCleaner, McAfee...). Ne touche jamais les taches Windows.", "Sur", true),
 
             // Security
             ["Mise Ã  jour Windows Defender"]           = ("Met a jour les definitions antivirus de Windows Defender. Recommande.", "100% sur", true),
@@ -126,6 +149,53 @@ namespace NettoyerPc
             ["VÃ©rification fichiers critiques systÃ¨me (SFC)"] = ("Verification SFC via le module avance.", "Sur", false),
             ["DÃ©fragmentation intelligente (disques HDD)"] = ("Defragmentation des disques HDD detectes (evite les SSD).", "Sur", true),
             ["TRIM disques SSD"]                           = ("Envoie la commande TRIM aux SSD pour liberer les blocs inutilises.", "100% sur", true),
+
+            // Drivers
+            ["Cache shaders DirectX partage (D3DSCache)"]         = ("Supprime le cache DirectX 12 et Vulkan partage entre tous les jeux. 100% sur : regenere en quelques secondes.", "100% sur", true),
+            ["Cache shaders DirectX partagé (D3DSCache)"]         = ("Supprime le cache DirectX 12 et Vulkan partage entre tous les jeux. 100% sur : regenere en quelques secondes.", "100% sur", true),
+            ["Cache shaders NVIDIA (DXCache, GLCache, Vulkan)"]   = ("Supprime DXCache, GLCache, VkCache et OptixCache NVIDIA. Regeneres automatiquement. Aucun pilote, parametre GeForce ou donnee de jeu touche.", "100% sur", true),
+            ["Cache shaders AMD (DxCache, GLCache, VkCache)"]     = ("Supprime les caches shader AMD Radeon. Regeneres automatiquement. Aucun pilote ou parametre AMD Adrenalin touche.", "100% sur", true),
+            ["Cache shaders Intel (ShaderCache)"]                 = ("Supprime le cache shader Intel Arc/UHD. Regenere automatiquement. Aucune donnee utilisateur touchee.", "100% sur", true),
+            ["Logs NVIDIA — GeForce Experience & Container"]      = ("Supprime les fichiers log et crash reports GeForce Experience et NV Container. Vos parametres NVIDIA ne sont pas touches.", "100% sur", true),
+            ["Logs AMD — Radeon Software & Adrenalin"]            = ("Supprime les fichiers log de Radeon Software Adrenalin. Vos parametres AMD ne sont pas touches.", "100% sur", true),
+            ["Logs d'installation de pilotes (SetupAPI)"]         = ("Tronque les gros logs SetupAPI et supprime les logs d installeurs ponctuels. Recreees par Windows.", "100% sur", true),
+            ["Supprimer les packages pilotes obsolètes (Driver Store)"] = ("Supprime les anciennes versions de pilotes en double dans le Driver Store. La version la plus recente est TOUJOURS conservee.", "Sur", false),
+            ["Rapport matériel et pilotes installés"]             = ("Affiche GPU, CPU, RAM avec versions de drivers, et les liens officiels de mise a jour NVIDIA/AMD/Intel.", "100% sur", true),
+
+            // Apps creatives — 2D
+            ["Krita (cache)"]                                     = ("Supprime le cache thumbnails Krita. Vos pinceaux, presets et projets .kra ne sont PAS touches.", "100% sur", true),
+            ["GIMP (cache, historique)"]                          = ("Supprime le cache GIMP et les fichiers temp. Vos pinceaux, scripts et projets .xcf ne sont PAS touches.", "100% sur", true),
+            ["Affinity suite (cache — Designer, Photo, Publisher)"] = ("Cache Affinity Designer/Photo/Publisher v1 et v2. Vos documents et presets ne sont PAS touches.", "100% sur", true),
+
+            // Apps creatives — 3D / VFX
+            ["Cinema 4D / Maxon (cache, logs)"]                   = ("Cache et logs Cinema 4D. Vos scenes, materiaux et presets ne sont PAS touches.", "100% sur", true),
+            ["Houdini (cache, logs, temp)"]                       = ("Cache et fichiers temporaires Houdini. Vos projets .hip et assets ne sont PAS touches.", "100% sur", true),
+            ["ZBrush (cache, temp)"]                              = ("Cache et fichiers temp ZBrush. Vos projets .zpr/.ztl, brushes et matcaps ne sont PAS touches.", "100% sur", true),
+            ["Substance 3D (cache, logs)"]                        = ("Cache et logs Adobe Substance 3D Painter/Designer/Sampler. Vos projets, exports et presets ne sont PAS touches.", "100% sur", true),
+
+            // Adobe — caches profonds (JAMAIS les projets ni les medias sources)
+            ["Adobe Premiere Pro — cache média disque"]           = ("Cache media et previews Premiere Pro. Regeneres a la reouverture du projet. JAMAIS de suppression de projet, sequence ou media source.", "Sur", true),
+            ["Adobe After Effects — cache disque"]                = ("Previews et disk cache After Effects. Regeneres au rendu suivant. JAMAIS de suppression de composition, rendu final ou fichier source.", "Sur", true),
+            ["Adobe Lightroom — cache d'aperçus"]                 = ("Cache d apercus standard Lightroom. Regeneres a l ouverture. Les catalogues .lrcat et Smart Previews ne sont PAS touches.", "Sur", true),
+
+            // Adobe — apps individuelles (caches uniquement — JAMAIS les projets, presets, bibliotheques ni les medias)
+            ["Adobe Photoshop (Camera Raw cache, logs)"]      = ("Camera Raw cache + logs Photoshop. Vos projets .psd/.psb, brushes, presets et actions ne sont PAS touches.", "100% sur", true),
+            ["Adobe Illustrator (cache, logs)"]               = ("Cache polices et logs Illustrator. Vos fichiers .ai, bibliotheques et presets ne sont PAS touches.", "100% sur", true),
+            ["Adobe InDesign (cache, logs)"]                  = ("CachedMediaData et logs InDesign. Vos projets .indd, liens et presets ne sont PAS touches.", "100% sur", true),
+            ["Adobe Acrobat / Reader (cache, logs)"]          = ("Cache disque et logs Acrobat Reader. Vos PDFs et favoris ne sont PAS touches.", "100% sur", true),
+            ["Adobe Bridge (cache miniatures, logs)"]         = ("Cache de miniatures et logs Bridge. Vos espaces de travail, collections et presets ne sont PAS touches.", "100% sur", true),
+            ["Adobe XD (cache, logs)"]                        = ("Cache disque et logs Adobe XD. Vos prototypes, composants et assets cloud ne sont PAS touches.", "100% sur", true),
+            ["Adobe Audition (cache média, logs)"]            = ("Cache media et logs Audition. Vos projets .sesx, sessions et presets ne sont PAS touches.", "100% sur", true),
+            ["Adobe Media Encoder (cache, logs)"]             = ("Cache de rendu et logs Media Encoder. Vos presets d export et queues sauvegardees ne sont PAS touches.", "100% sur", true),
+
+            // Audio
+            ["FL Studio (cache, logs, crash reports)"]            = ("Logs et crash reports FL Studio. Vos projets .flp, samples et plugins ne sont PAS touches.", "100% sur", true),
+            ["Ableton Live (logs, crash reports)"]                = ("Logs et crash reports Ableton. La Library (samples, instruments) n est PAS touchee — elle represente votre travail et vos achats.", "100% sur", true),
+            ["Audacity (logs, autosaves temporaires)"]            = ("Fichiers temporaires de session et logs Audacity. Vos projets .aup3 ne sont PAS touches.", "100% sur", true),
+            ["Vegas Pro (cache, logs)"]                           = ("Cache preview et logs Vegas Pro (MAGIX et Sony). Vos projets .veg et renders ne sont PAS touches.", "100% sur", true),
+
+            // Deep clean creatif — risque a afficher clairement
+            ["Unreal Engine — DDC global (cache compilation, peut être volumineux)"] = ("Supprime le Derived Data Cache global Unreal Engine. Peut depasser 50 GB. ENTIEREMENT regenere a la reouverture du projet. Aucun blueprint, mesh, texture ou asset source n est touche. A utiliser si vous manquez d espace disque — la prochaine ouverture de projet sera plus longue.", "Attention", false),
 
             // Bloatware
             ["Analyse bloatwares installÃ©s"]                              = ("Scanne les applications pre-installees par Microsoft.", "100% sur", false),

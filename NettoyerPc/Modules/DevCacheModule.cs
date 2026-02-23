@@ -22,7 +22,11 @@ namespace NettoyerPc.Modules
                 new() { Name = "Nettoyage Visual Studio (tous disques)",Category = "dev" },
                 new() { Name = "Suppression node_modules (tous disques)",Category = "dev" },
                 new() { Name = "Caches NuGet/Gradle/Maven/npm/pip",    Category = "dev" },
-                new() { Name = "VS Code cache (tous disques)",         Category = "dev" }
+                new() { Name = "VS Code cache (tous disques)",         Category = "dev" },
+                new() { Name = "JetBrains IDEs (caches, logs)",        Category = "dev" },
+                new() { Name = "Eclipse / NetBeans (cache)",           Category = "dev" },
+                new() { Name = "Android Studio (caches)",              Category = "dev" },
+                new() { Name = "Cursor IDE (cache)",                   Category = "dev" },
             };
 
             if (mode == CleaningMode.DeepClean || mode == CleaningMode.Advanced)
@@ -60,6 +64,22 @@ namespace NettoyerPc.Modules
                 else if (step.Name.Contains("VS Code"))
                 {
                     CleanVSCode(step);
+                }
+                else if (step.Name.Contains("JetBrains"))
+                {
+                    CleanJetBrains(step);
+                }
+                else if (step.Name.Contains("Eclipse"))
+                {
+                    CleanEclipseNetBeans(step);
+                }
+                else if (step.Name.Contains("Android Studio"))
+                {
+                    CleanAndroidStudio(step);
+                }
+                else if (step.Name.Contains("Cursor"))
+                {
+                    CleanCursorIDE(step);
                 }
                 else if (step.Name.Contains("Docker"))
                 {
@@ -295,6 +315,163 @@ namespace NettoyerPc.Modules
             DeleteDirectoryIfExists(Path.Combine(codePath, "GPUCache"), step);
             DeleteDirectoryIfExists(Path.Combine(codePath, "Code Cache"), step);
             // NE PAS supprimer les dossiers .vscode (contiennent settings/extensions workspace)
+        }
+
+        // ── IDEs ─────────────────────────────────────────────────────────────────
+
+        /// <summary>Cache disque + logs de toutes les IDEs JetBrains (IntelliJ, PyCharm, WebStorm,
+        /// Rider, CLion, DataGrip, GoLand, PhpStorm, AppCode, Toolbox).
+        /// Ne touche jamais les paramètres, plugins, workspaces ni les projets.</summary>
+        private void CleanJetBrains(CleaningStep step)
+        {
+            var appData  = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            // JetBrains Toolbox path + toutes IDEs installées via Toolbox ou standalone
+            var jbRoots = new[]
+            {
+                Path.Combine(appData,  "JetBrains"),
+                Path.Combine(localApp, "JetBrains"),
+                Path.Combine(userHome, ".cache", "JetBrains"),
+            };
+
+            // Noms de sous-dossiers sûrs à supprimer dans chaque versioned product dir
+            var safeFolders = new[] { "caches", "log", "logs", "tmp", "index", "compile-server" };
+
+            foreach (var root in jbRoots)
+            {
+                if (!Directory.Exists(root)) continue;
+                try
+                {
+                    foreach (var productDir in Directory.GetDirectories(root))
+                    {
+                        foreach (var sub in Directory.GetDirectories(productDir))
+                        {
+                            var name = Path.GetFileName(sub).ToLowerInvariant();
+                            if (Array.Exists(safeFolders, s => name == s || name.StartsWith(s)))
+                                DeleteDirectoryIfExists(sub, step);
+                        }
+                        // Logs directs dans le product dir
+                        foreach (var logFile in Directory.GetFiles(productDir, "*.log", SearchOption.TopDirectoryOnly))
+                        {
+                            try { step.SpaceFreed += new FileInfo(logFile).Length; File.Delete(logFile); step.FilesDeleted++; } catch { }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            // Toolbox itself
+            var toolboxCache = Path.Combine(appData, "JetBrains", "Toolbox", "cache");
+            DeleteDirectoryIfExists(toolboxCache, step);
+            DeleteDirectoryIfExists(Path.Combine(appData, "JetBrains", "Toolbox", "logs"), step);
+        }
+
+        /// <summary>Cache Eclipse (.metadata temps/index) et NetBeans (cache, lock files).
+        /// Ne touche jamais les workspaces, projets ni les plugins installés.</summary>
+        private void CleanEclipseNetBeans(CleaningStep step)
+        {
+            var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var appData  = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            // Eclipse .metadata temp dans les workspaces (recherche limitée)
+            var eclipsePaths = new[]
+            {
+                Path.Combine(userHome, ".eclipse"),
+                Path.Combine(localApp, "eclipse"),
+                Path.Combine(userHome, "eclipse"),
+            };
+            foreach (var ep in eclipsePaths)
+            {
+                if (!Directory.Exists(ep)) continue;
+                // Ne supprimer QUE les dossiers .tmp et logs
+                foreach (var dir in SafeDirectories(ep))
+                {
+                    try
+                    {
+                        var n = Path.GetFileName(dir).ToLowerInvariant();
+                        if (n == ".tmp" || n == "tmp" || n == "log" || n == "logs")
+                            DeleteDirectoryIfExists(dir, step);
+                    }
+                    catch { }
+                }
+            }
+
+            // NetBeans
+            var nbPaths = new[]
+            {
+                Path.Combine(appData, "NetBeans"),
+                Path.Combine(localApp, "NetBeans"),
+            };
+            foreach (var np in nbPaths)
+            {
+                if (!Directory.Exists(np)) continue;
+                foreach (var ver in SafeDirectories(np))
+                {
+                    DeleteDirectoryIfExists(Path.Combine(ver, "cache"), step);
+                    DeleteDirectoryIfExists(Path.Combine(ver, "var",  "cache"), step);
+                    DeleteDirectoryIfExists(Path.Combine(ver, "tmp"),   step);
+                }
+            }
+        }
+
+        /// <summary>Caches Android Studio (build cache, AVD snapshot cache, Gradle daemon logs).
+        /// Ne touche jamais les AVD (.avd folders), les keystores, ni les fichiers source.</summary>
+        private void CleanAndroidStudio(CleaningStep step)
+        {
+            var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var appData  = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            // Caches Android Studio IDE (même archi JetBrains)
+            foreach (var root in new[] { appData, localApp })
+            {
+                var jbRoot = Path.Combine(root, "Google", "AndroidStudio");
+                if (!Directory.Exists(jbRoot)) continue;
+                foreach (var ver in SafeDirectories(jbRoot))
+                    foreach (var sub in new[] { "caches", "log", "logs", "tmp" })
+                        DeleteDirectoryIfExists(Path.Combine(ver, sub), step);
+            }
+
+            // Gradle daemon logs (pas le cache de build — serait trop long à régénérer)
+            var gradleDaemon = Path.Combine(userHome, ".gradle", "daemon");
+            if (Directory.Exists(gradleDaemon))
+                foreach (var ver in SafeDirectories(gradleDaemon))
+                    foreach (var logFile in SafeFiles(ver, "*.log"))
+                    {
+                        try { step.SpaceFreed += new FileInfo(logFile).Length; File.Delete(logFile); step.FilesDeleted++; } catch { }
+                    }
+
+            // Caches AVD snapshot (regenerables) — PAS les .avd eux-mêmes
+            var avdPath = Path.Combine(userHome, ".android", "avd");
+            if (Directory.Exists(avdPath))
+                foreach (var avdDir in SafeDirectories(avdPath))
+                    DeleteDirectoryIfExists(Path.Combine(avdDir, "snapshots"), step);
+        }
+
+        /// <summary>Cache Cursor IDE (fork VS Code) — même structure que VS Code.
+        /// Ne touche jamais les paramètres, extensions ni keybindings.</summary>
+        private void CleanCursorIDE(CleaningStep step)
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var cursorPath = Path.Combine(appData, "Cursor");
+            if (!Directory.Exists(cursorPath)) return;
+            foreach (var sub in new[] { "Cache", "CachedData", "logs", "GPUCache", "Code Cache", "CachedExtensions" })
+                DeleteDirectoryIfExists(Path.Combine(cursorPath, sub), step);
+        }
+
+        private static string[] SafeDirectories(string path)
+        {
+            try { return Directory.Exists(path) ? Directory.GetDirectories(path) : Array.Empty<string>(); }
+            catch { return Array.Empty<string>(); }
+        }
+
+        private static string[] SafeFiles(string path, string pattern)
+        {
+            try { return Directory.Exists(path) ? Directory.GetFiles(path, pattern) : Array.Empty<string>(); }
+            catch { return Array.Empty<string>(); }
         }
 
         private void CleanDocker(CleaningStep step)

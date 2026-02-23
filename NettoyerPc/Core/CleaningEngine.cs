@@ -50,6 +50,7 @@ namespace NettoyerPc.Core
             _modules.Add(new Modules.WindowsModule());
             _modules.Add(new Modules.SecurityModule());
             _modules.Add(new Modules.ThirdPartyAppsModule());
+            _modules.Add(new Modules.DriverModule());
             _modules.Add(new Modules.SystemOptimizationModule());
             _modules.Add(new Modules.BloatwareModule());
             _modules.Add(new Modules.AdvancedCleaningModule());
@@ -64,6 +65,11 @@ namespace NettoyerPc.Core
                     result.Add((module, step));
             return result;
         }
+
+        /// <summary>Retourne le nombre total d'étapes qui seront exécutées pour le mode donné.
+        /// Utilisé par le CleaningForm pour pré-initialiser le compteur du bas.</summary>
+        public int GetExpectedStepCount(CleaningMode mode)
+            => GetPairsForMode(mode).Count;
 
         public async Task<CleaningReport> RunCleaningAsync(CleaningMode mode, IProgress<int>? progress = null)
         {
@@ -229,7 +235,29 @@ namespace NettoyerPc.Core
             ["WhatsApp Desktop (cache)"]                  = "whatsapp",
             ["Telegram Desktop (cache)"]                  = "telegram",
             ["Adobe Creative Cloud (cache)"]              = "adobe",
-            ["Figma (cache)"]                             = "figma",
+            ["Adobe Photoshop (Camera Raw cache, logs)"]  = "photoshop",
+            ["Adobe Illustrator (cache, logs)"]           = "illustrator",
+            ["Adobe InDesign (cache, logs)"]              = "indesign",
+            ["Adobe Acrobat / Reader (cache, logs)"]      = "acrobat",
+            ["Adobe Bridge (cache miniatures, logs)"]     = "bridge",
+            ["Adobe XD (cache, logs)"]                    = "adobexd",
+            ["Adobe Audition (cache média, logs)"]        = "audition",
+            ["Adobe Media Encoder (cache, logs)"]         = "mediaencoder",
+            ["Adobe Premiere Pro — cache média disque"]   = "premierepro",
+            ["Adobe After Effects — cache disque"]        = "aftereffects",
+            ["Adobe Lightroom — cache d'aperçus"]         = "lightroom",            ["Microsoft Office (cache, temp, MRU)"]       = "msoffice",
+            ["LibreOffice / OpenOffice (cache, temp)"]    = "libreoffice",
+            ["WPS Office (cache)"]                        = "wpsoffice",
+            ["Scan .svn (tous disques)"]                 = "svn",
+            ["Nettoyage logs Git (tous disques)"]          = "gitlogs",
+            ["Nettoyage Visual Studio (tous disques)"]     = "visualstudio",
+            ["Suppression node_modules (tous disques)"]    = "nodemodules",
+            ["Caches NuGet/Gradle/Maven/npm/pip"]          = "devcaches",
+            ["VS Code cache (tous disques)"]               = "vscode",
+            ["JetBrains IDEs (caches, logs)"]             = "jetbrains",
+            ["Eclipse / NetBeans (cache)"]                = "eclipse",
+            ["Android Studio (caches)"]                   = "androidstudio",
+            ["Cursor IDE (cache)"]                        = "cursor",            ["Figma (cache)"]                             = "figma",
             ["Notion (cache)"]                            = "notion",
             ["Twitch (cache)"]                            = "twitch",
             ["VLC (cache, logs)"]                         = "vlc",

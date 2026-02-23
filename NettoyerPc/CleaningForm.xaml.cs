@@ -33,7 +33,7 @@ namespace NettoyerPc
             ["network"]    = "#1A4A2A", ["windows"]    = "#1A4B6B",
             ["dev"]        = "#4B4B1A", ["sysopt"]     = "#1A3A6B",
             ["security"]   = "#1A3A6B", ["advanced"]   = "#4A2A00",
-            ["bloatware"]  = "#6B2A00",
+            ["bloatware"]  = "#6B2A00", ["drivers"]    = "#1A3A5A",
         };
 
         public CleaningForm(CleaningMode mode, HashSet<string>? customSteps = null)
@@ -88,7 +88,11 @@ namespace NettoyerPc
 
             try
             {
-                var progress = new Progress<int>(pct => Dispatcher.Invoke(() =>
+// Pré-calcul du nombre total d'étapes pour que le compteur soit correct dès le début
+            _stepsTotal = _engine.GetExpectedStepCount(_mode);
+            StepsOkText.Text = $"0 / {_stepsTotal}";
+
+            var progress = new Progress<int>(pct => Dispatcher.Invoke(() =>
                 {
                     GlobalProgress.Value  = pct;
                     ProgressPercent.Text  = $"{pct}%";
@@ -114,7 +118,7 @@ namespace NettoyerPc
         {
             Dispatcher.Invoke(() =>
             {
-                _stepsTotal++;
+                // _stepsTotal already initialized before cleaning — do not increment here
                 StepsOkText.Text = $"{_stepsOk} / {_stepsTotal}";
 
                 var catHex    = CatBorderHex.TryGetValue(step.Category ?? "general", out var h) ? h : "#2A2A3E";

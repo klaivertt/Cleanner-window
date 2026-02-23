@@ -250,7 +250,12 @@
   "apps.group.browsers":   "🌐 Browsers",
   "apps.group.gaming":     "🎮 Gaming Platforms",
   "apps.group.comms":      "💬 Communication & Productivity",
-  "apps.group.media":      "🎵 Media & Creation",
+  "apps.group.media":      "🎵 Media & Streaming",
+  "apps.group.creative":   "🎨 3D Creation & Game Engines",
+  "apps.group.autodesk":   "🏗️ Autodesk Suite",
+  "apps.group.audio":      "🎶 Audio & Music",
+  "apps.group.office":     "📄 Office Suites",
+  "apps.group.ides":       "💻 IDEs & Code Editors",
   "apps.saved":            "✓ Preferences saved.",
 
   "settings.section.title":      "⚙️ Cleaning Options",
