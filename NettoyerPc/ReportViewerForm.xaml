@@ -217,7 +217,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="TxtFooterStats" Grid.Column="0"
                            Foreground="#555" FontSize="11" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="Nettoyeur PC 2000  v2.0"
+                <TextBlock Grid.Column="1" Text="PC Clean  v2.0"
                            Foreground="#444" FontSize="11" VerticalAlignment="Center"/>
             </Grid>
         </Border>

@@ -187,6 +187,13 @@ namespace NettoyerPc
             viewer.ShowDialog();
         }
 
+        private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            var updateForm = new UpdateCheckForm();
+            updateForm.Owner = this;
+            updateForm.ShowDialog();
+        }
+
         // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         private void LaunchCleaning(Core.CleaningMode mode)

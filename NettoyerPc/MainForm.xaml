@@ -1,7 +1,7 @@
 ﻿<Window x:Class="NettoyerPc.MainForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Nettoyeur PC 2000"
+        Title="PC Clean"
         Height="820" Width="960"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanMinimize"
@@ -67,20 +67,35 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Nettoyeur PC 2000" FontSize="26" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Optimisation propre · Espace disque · Gaming · Windows" FontSize="12" Foreground="#888" Margin="0,3,0,0"/>
+                    <TextBlock Text="🧹 PC Clean" FontSize="26" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Optimisation de performance · Libération d'espace · Sécurité système · Gestionnaire de jeux" FontSize="12" Foreground="#AAAAAA" Margin="0,3,0,0"/>
                 </StackPanel>
-                <Button Grid.Column="1" x:Name="BtnReports" Content="Mes rapports" Click="BtnReports_Click"
-                        Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnCheckUpdate" Content="🔄 Mises à jour" Click="BtnCheckUpdate_Click"
+                            Style="{StaticResource BtnPrimary}" Background="#1A3A6B" Height="36" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnReports" Content="📊 Mes rapports" Click="BtnReports_Click"
+                            Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36"/>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- BANNIERE SECURITE -->
-        <Border Grid.Row="1" Background="#0D3320" Padding="20,10">
-            <TextBlock VerticalAlignment="Center" Foreground="#AADDBB" FontSize="12">
-                <Run FontWeight="Bold" Foreground="#4EC98C" Text="GARANTIE SECURITE   "/>
-                <Run Text="Ce programme ne supprime JAMAIS vos fichiers de jeux, sauvegardes, documents ni applications. Il efface uniquement les fichiers temporaires et caches qui se recreent automatiquement."/>
-            </TextBlock>
+        <!-- BANNIERE SECURITE AMÉLIORÉE -->
+        <Border Grid.Row="1" Background="#0D3320" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="🔒" FontSize="20" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock FontWeight="Bold" Foreground="#4EC98C" FontSize="12">
+                        <Run Text="GARANTIE DE SÉCURITÉ"/>
+                    </TextBlock>
+                    <TextBlock Foreground="#AADDBB" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0">
+                        <Run Text="Ce programme ne supprime jamais vos fichiers de jeux, paramètres, sauvegardes, documents ni applications. Il efface uniquement les fichiers temporaires et caches qui se recréent automatiquement. Aucune donnée personnelle n'est affectée."/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- CONTENU PRINCIPAL -->
@@ -323,7 +338,7 @@
                 <TextBlock x:Name="TxtLastCleanup" Grid.Column="1"
                            Foreground="#555" FontSize="11" VerticalAlignment="Center"
                            HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="Nettoyeur PC 2000  v2.0"
+                <TextBlock Grid.Column="2" Text="PC Clean  v2.0"
                            Foreground="#444" FontSize="11" VerticalAlignment="Center"/>
             </Grid>
         </Border>

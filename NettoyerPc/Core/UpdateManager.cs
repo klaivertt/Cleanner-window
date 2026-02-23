@@ -9,13 +9,11 @@ namespace NettoyerPc.Core
 {
     public class UpdateManager
     {
-        // À adapter : GitHub repo owner/name
-        private const string GitHubOwner = "Scryl";
-        private const string GitHubRepo  = "Cleanner-window";
-        private const string ApiUrl      = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepo}/releases/latest";
+        // Utiliser AppConstants pour la configuration GitHub
+        private const string ApiUrl = "https://api.github.com/repos/klaivertt/Cleanner-window/releases/latest";
 
-        // Version actuelle (à synchroniser avec le .csproj)
-        public static readonly Version CurrentVersion = new(2, 0, 0, 0);
+        // Version actuelle (synchronized avec AppConstants)
+        public static readonly Version CurrentVersion = AppConstants.VersionNumber;
 
         /// <summary>Infos sur une version disponible depuis GitHub.</summary>
         public record UpdateInfo(Version Version, string DownloadUrl, string ChangeLog, DateTime PublishedAt);
@@ -28,7 +26,7 @@ namespace NettoyerPc.Core
                 progress?.Invoke("Connexion à GitHub...");
 
                 using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("User-Agent", "NettoyeurPC2000");
+                client.DefaultRequestHeaders.Add("User-Agent", $"{AppConstants.AppName}/{AppConstants.AppVersion}");
 
                 var response = await client.GetAsync(ApiUrl);
                 if (!response.IsSuccessStatusCode)

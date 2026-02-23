@@ -1,0 +1,128 @@
+﻿<Window x:Class="NettoyerPc.UpdateCheckForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Vérifier les mises à jour"
+        Height="420" Width="580"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#1E1E2E"
+        ShowInTaskbar="False">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- EN-TETE -->
+        <Border Grid.Row="0" Background="#12121F" Padding="20,16">
+            <StackPanel>
+                <TextBlock Text="Vérification des mises à jour" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                <TextBlock Text="PC Clean" FontSize="12" Foreground="#888" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- CONTENU -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#1E1E2E">
+            <StackPanel Margin="24,20,24,20">
+
+                <!-- Spinner de vérification -->
+                <StackPanel x:Name="VerifyingPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,40">
+                    <TextBlock Text="Vérification en cours..." FontSize="14" Foreground="#AAAACC"
+                               HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                    <ProgressBar x:Name="CheckProgress" Height="6" Width="300"
+                                 Foreground="#4AACFF" Background="#2A2A3E" IsIndeterminate="True" BorderThickness="0"/>
+                </StackPanel>
+
+                <!-- Résultat OK : à jour -->
+                <Border x:Name="UpToDatePanel" Visibility="Collapsed"
+                        Background="#0D2A1A" BorderBrush="#2A6B4A" BorderThickness="1"
+                        CornerRadius="10" Padding="20,16">
+                    <StackPanel>
+                        <TextBlock Text="✓ Vous avez la dernière version" FontSize="16" FontWeight="Bold"
+                                   Foreground="#5AE896"/>
+                        <TextBlock Text="PC Clean est à jour." FontSize="12" Foreground="#4EC98C"
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Résultat OK : update disponible -->
+                <Border x:Name="UpdateAvailablePanel" Visibility="Collapsed"
+                        Background="#0D1F3C" BorderBrush="#2A5A8B" BorderThickness="1"
+                        CornerRadius="10" Padding="20,16">
+                    <StackPanel>
+                        <TextBlock Text="Nouvelle version disponible !" FontSize="16" FontWeight="Bold"
+                                   Foreground="#6BBBFF"/>
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Version actuelle" FontSize="11" Foreground="#888"/>
+                                <TextBlock x:Name="TxtCurrentVer" Text="2.0.0.0" FontSize="13" FontWeight="Bold"
+                                           Foreground="#AAAACC"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Nouvelle version" FontSize="11" Foreground="#888"/>
+                                <TextBlock x:Name="TxtNewVer" Text="2.1.0.0" FontSize="13" FontWeight="Bold"
+                                           Foreground="#6BBBFF"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Changelog -->
+                        <TextBlock Text="Changements :" FontSize="11" FontWeight="SemiBold" Foreground="#AAAACC"
+                                   Margin="0,12,0,6"/>
+                        <Border Background="#1A1A2E" CornerRadius="6" Padding="12,10" Height="100">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBlock x:Name="TxtChangelog" Text="Chargement..." FontSize="11" Foreground="#888"
+                                           TextWrapping="Wrap"/>
+                            </ScrollViewer>
+                        </Border>
+
+                        <!-- Barre progression téléchargement -->
+                        <ProgressBar x:Name="DownloadProgress" Height="6" Margin="0,12,0,12"
+                                     Visibility="Collapsed" Foreground="#4AACFF" Background="#2A2A3E"
+                                     BorderThickness="0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Erreur -->
+                <Border x:Name="ErrorPanel" Visibility="Collapsed"
+                        Background="#2A1010" BorderBrush="#6B2020" BorderThickness="1"
+                        CornerRadius="10" Padding="20,16">
+                    <StackPanel>
+                        <TextBlock Text="Erreur lors de la vérification" FontSize="14" FontWeight="Bold"
+                                   Foreground="#FF6B6B"/>
+                        <TextBlock x:Name="TxtError" Text="Détail de l'erreur..." FontSize="11" Foreground="#DD8888"
+                                   Margin="0,8,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- BOUTONS -->
+        <Border Grid.Row="2" Background="#12121F" BorderBrush="#2A2A3E" BorderThickness="0,1,0,0" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="1" x:Name="BtnInstall" Content="Installer la mise à jour"
+                        Click="BtnInstall_Click" Visibility="Collapsed"
+                        Background="#1A5ECC" Foreground="White" BorderThickness="0"
+                        Padding="16,10" FontSize="12" FontWeight="SemiBold"
+                        Cursor="Hand" Margin="0,0,8,0"/>
+
+                <Button Grid.Column="2" x:Name="BtnClose" Content="Fermer" Click="BtnClose_Click"
+                        Background="#2A2A3E" Foreground="White" BorderThickness="0"
+                        Padding="16,10" FontSize="12" FontWeight="SemiBold" Cursor="Hand"/>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>
