@@ -234,6 +234,12 @@
                         HorizontalContentAlignment="Left"
                         Background="Transparent" Height="40"
                         Padding="16,0" Margin="0,0,0,2"/>
+
+                <Button x:Name="NavHelp" Content="  💡  Aide et Modes"
+                        Click="NavHelp_Click" Tag="help"
+                        HorizontalContentAlignment="Left"
+                        Background="Transparent" Height="40"
+                        Padding="16,0" Margin="0,0,0,2"/>
             </StackPanel>
         </Border>
 
@@ -300,6 +306,65 @@
                                     <TextBlock x:Name="TxtSkipDisabledLabel" Text="Ignorer les apps désactivées"
                                                Foreground="#CCCCCC" FontWeight="SemiBold"/>
                                     <TextBlock x:Name="TxtSkipDisabledDesc" Text="Ne pas nettoyer les applications marquées comme désactivées dans l'onglet Applications."
+                                               Foreground="#666688" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Options avancées -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock x:Name="TxtAdvancedSectionTitle" Style="{StaticResource SectionTitle}" Text="🔧 Options avancées"/>
+
+                            <!-- Mode verbeux -->
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="ChkVerbose" Grid.Column="0"
+                                          VerticalAlignment="Top" Margin="0,2,12,0"
+                                          Checked="ChkVerbose_Changed" Unchecked="ChkVerbose_Changed"/>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="TxtVerboseLabel" Text="Mode verbeux (logs détaillés)"
+                                               Foreground="#CCCCCC" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TxtVerboseDesc" Text="Afficher tous les détails des opérations dans les rapports (utile pour le débogage)."
+                                               Foreground="#666688" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Confirmation avant nettoyage -->
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="ChkConfirmClean" Grid.Column="0"
+                                          VerticalAlignment="Top" Margin="0,2,12,0"
+                                          Checked="ChkConfirmClean_Changed" Unchecked="ChkConfirmClean_Changed"/>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="TxtConfirmCleanLabel" Text="Résumé avant nettoyage"
+                                               Foreground="#CCCCCC" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TxtConfirmCleanDesc" Text="Afficher un résumé des étapes avant de démarrer le nettoyage."
+                                               Foreground="#666688" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Notifications sonores -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="ChkSoundNotifs" Grid.Column="0"
+                                          VerticalAlignment="Top" Margin="0,2,12,0"
+                                          Checked="ChkSoundNotifs_Changed" Unchecked="ChkSoundNotifs_Changed"/>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="TxtSoundNotifsLabel" Text="Notifications sonores"
+                                               Foreground="#CCCCCC" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="TxtSoundNotifsDesc" Text="Jouer un son à la fin de chaque nettoyage."
                                                Foreground="#666688" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Grid>
@@ -503,6 +568,250 @@
 
                     <TextBlock x:Name="TxtAppsSavedStatus" Text="" Foreground="#4EC98C"
                                FontSize="11" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+
+                </StackPanel>
+
+                <!-- ──────────────────── PAGE AIDE ET MODES -->
+                <StackPanel x:Name="PageHelp" Visibility="Collapsed">
+
+                    <TextBlock x:Name="TxtPageHelp" Text="💡 Aide et explication des modes" FontSize="20" FontWeight="Bold"
+                               Foreground="White" Margin="0,0,0,20"/>
+
+                    <!-- Introduction -->
+                    <Border Style="{StaticResource Card}" Background="#0D1F3C" BorderBrush="#2255AA">
+                        <StackPanel>
+                            <TextBlock Text="ℹ️ Guide des modes de nettoyage" FontSize="15" FontWeight="Bold"
+                                       Foreground="#6BBBFF" Margin="0,0,0,12"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="#AACCEE" FontSize="12" LineHeight="20">
+                                <Run Text="PC Clean propose plusieurs modes de nettoyage adaptés à différents besoins."/>
+                                <LineBreak/>
+                                <Run Text="Choisissez le mode le plus adapté à votre situation. Les modes sont classés par ordre de sécurité et d'impact."/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Nettoyage Rapide -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="🟢 Nettoyage Rapide" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                <Border Background="#1A6B3A" CornerRadius="4" Padding="8,3" Margin="10,0,0,0">
+                                    <TextBlock Text="100% SÛR" FontSize="10" FontWeight="Bold" Foreground="#5AE896"/>
+                                </Border>
+                                <Border Background="#2A2A3E" CornerRadius="4" Padding="8,3" Margin="6,0,0,0">
+                                    <TextBlock Text="5-15 min" FontSize="10" Foreground="#888"/>
+                                </Border>
+                            </StackPanel>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#CCCCCC" FontSize="12" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Text="Recommandé pour :"/>
+                                <Run Text=" Utilisation quotidienne, gain d'espace sans risque"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#AAAAAA" FontSize="11" LineHeight="18" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Ce qui est nettoyé :"/>
+                                <LineBreak/>
+                                <Run Text="  • Fichiers temporaires Windows (dossiers TEMP)"/>
+                                <LineBreak/>
+                                <Run Text="  • Cache des navigateurs (Chrome, Firefox, Edge, Brave, Opera)"/>
+                                <LineBreak/>
+                                <Run Text="  • Miniatures Windows (se recréent automatiquement)"/>
+                                <LineBreak/>
+                                <Run Text="  • Prefetch Windows (améliore les démarrages suivants)"/>
+                                <LineBreak/>
+                                <Run Text="  • Toutes les corbeilles (tous les disques)"/>
+                                <LineBreak/>
+                                <Run Text="  • Journaux système Windows"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#4EC98C" FontSize="11" LineHeight="18">
+                                <Run FontWeight="SemiBold" Text="✓ Garanties :"/>
+                                <LineBreak/>
+                                <Run Text="  Ne touche JAMAIS aux sauvegardes de jeux, documents, applications installées, configurations"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Gaming + Optimisation Disque -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="🎮 Gaming + Optimisation Disque" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                <Border Background="#2A1A5A" CornerRadius="4" Padding="8,3" Margin="10,0,0,0">
+                                    <TextBlock Text="GAMING SAFE" FontSize="10" FontWeight="Bold" Foreground="#B19CD9"/>
+                                </Border>
+                                <Border Background="#2A2A3E" CornerRadius="4" Padding="8,3" Margin="6,0,0,0">
+                                    <TextBlock Text="20-60 min" FontSize="10" Foreground="#888"/>
+                                </Border>
+                            </StackPanel>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#CCCCCC" FontSize="12" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Text="Recommandé pour :"/>
+                                <Run Text=" Joueurs qui veulent optimiser leurs performances sans risque"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#AAAAAA" FontSize="11" LineHeight="18" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Nettoyage gaming :"/>
+                                <LineBreak/>
+                                <Run Text="  • Shader cache Steam (se recompile au démarrage, 1 minute d'attente)"/>
+                                <LineBreak/>
+                                <Run Text="  • Logs Steam, Epic Games, Battle.net (ne touche pas aux jeux)"/>
+                                <LineBreak/>
+                                <Run Text="  • Cache DirectX et GPU (D3DSCache)"/>
+                                <LineBreak/>
+                                <Run Text="  • Cache Discord, Spotify, OBS (logs uniquement)"/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run FontWeight="SemiBold" Foreground="#FFB830" Text="Optimisation disque :"/>
+                                <LineBreak/>
+                                <Run Text="  • HDD : Défragmentation intelligente (réorganise les fichiers pour vitesse)"/>
+                                <LineBreak/>
+                                <Run Text="  • SSD : Commande TRIM (libère les blocs inutilisés)"/>
+                                <LineBreak/>
+                                <Run Text="  • Vérification d'erreurs (chkdsk /scan sans redémarrage)"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#4EC98C" FontSize="11" LineHeight="18">
+                                <Run FontWeight="SemiBold" Text="✓ Garanties :"/>
+                                <LineBreak/>
+                                <Run Text="  Les jeux, sauvegardes, mods et configurations restent intacts"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Nettoyage de Printemps -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="🧹 Nettoyage de Printemps" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                <Border Background="#4A2A00" CornerRadius="4" Padding="8,3" Margin="10,0,0,0">
+                                    <TextBlock Text="MODÉRÉ" FontSize="10" FontWeight="Bold" Foreground="#FFB830"/>
+                                </Border>
+                                <Border Background="#2A2A3E" CornerRadius="4" Padding="8,3" Margin="6,0,0,0">
+                                    <TextBlock Text="60-120 min" FontSize="10" Foreground="#888"/>
+                                </Border>
+                            </StackPanel>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#CCCCCC" FontSize="12" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Text="Recommandé pour :"/>
+                                <Run Text=" Nettoyage en profondeur annuel ou semestriel"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#AAAAAA" FontSize="11" LineHeight="18" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Inclut tout le Nettoyage Rapide +"/>
+                                <LineBreak/>
+                                <Run Text="  • Caches de développement : npm, pip, gradle, NuGet, Maven, Composer"/>
+                                <LineBreak/>
+                                <Run Text="  • Nettoyage profond des navigateurs (historique, cookies, cache DNS)"/>
+                                <LineBreak/>
+                                <Run Text="  • Windows Update cache (anciens fichiers d'installation)"/>
+                                <LineBreak/>
+                                <Run Text="  • Nettoyage des composants Windows (WinSxS)"/>
+                                <LineBreak/>
+                                <Run Text="  • Défragmentation complète + point de restauration"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#FFB830" FontSize="11" LineHeight="18" Margin="0,0,0,8">
+                                <Run FontWeight="SemiBold" Text="⚠️ À savoir :"/>
+                                <LineBreak/>
+                                <Run Text="  Les caches de développement se retéléchargent lors du prochain build (normal)"/>
+                                <LineBreak/>
+                                <Run Text="  Point de restauration créé automatiquement avant nettoyage"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Réparation Système -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="🔧 Réparation et Optimisation Système" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                <Border Background="#1A3A5A" CornerRadius="4" Padding="8,3" Margin="10,0,0,0">
+                                    <TextBlock Text="SYSTÈME" FontSize="10" FontWeight="Bold" Foreground="#4AACFF"/>
+                                </Border>
+                                <Border Background="#2A2A3E" CornerRadius="4" Padding="8,3" Margin="6,0,0,0">
+                                    <TextBlock Text="30-90 min" FontSize="10" Foreground="#888"/>
+                                </Border>
+                            </StackPanel>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#CCCCCC" FontSize="12" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Text="Recommandé pour :"/>
+                                <Run Text=" Problèmes système, erreurs, lenteurs inexpliquées"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#AAAAAA" FontSize="11" LineHeight="18" Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="7 étapes de réparation :"/>
+                                <LineBreak/>
+                                <Run Text="  1. SFC /scannow - Vérifie l'intégrité des fichiers système"/>
+                                <LineBreak/>
+                                <Run Text="  2. DISM /RestoreHealth - Répare l'image Windows"/>
+                                <LineBreak/>
+                                <Run Text="  3. DISM ComponentCleanup - Libère l'espace WinSxS"/>
+                                <LineBreak/>
+                                <Run Text="  4. Reset réseau complet (Winsock, IP, DNS)"/>
+                                <LineBreak/>
+                                <Run Text="  5. Configuration DNS Cloudflare 1.1.1.1"/>
+                                <LineBreak/>
+                                <Run Text="  6. Reconstruction cache polices de caractères"/>
+                                <LineBreak/>
+                                <Run Text="  7. TRIM et défragmentation tous les disques"/>
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#4AACFF" FontSize="11" LineHeight="18">
+                                <Run FontWeight="SemiBold" Text="ℹ️ Information :"/>
+                                <LineBreak/>
+                                <Run Text="  L'ordinateur reste utilisable pendant l'opération. SFC et DISM peuvent être longs."/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Sélection personnalisée -->
+                    <Border Style="{StaticResource Card}" Background="#0D1F3C" BorderBrush="#2255AA">
+                        <StackPanel>
+                            <TextBlock Text="🎯 Sélection personnalisée" FontSize="15" FontWeight="Bold"
+                                       Foreground="White" Margin="0,0,0,10"/>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#AACCEE" FontSize="12" LineHeight="20">
+                                <Run FontWeight="SemiBold" Text="Le mode le plus sûr et flexible."/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="Cochez exactement ce que vous voulez nettoyer."/>
+                                <Run Text=" Chaque option est documentée avec ce qu'elle touche et ne touche pas."/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run Text="Idéal pour un contrôle total ou si vous avez des besoins spécifiques."/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Conseils -->
+                    <Border Style="{StaticResource Card}" Background="#1A2A1A" BorderBrush="#2A5A2A">
+                        <StackPanel>
+                            <TextBlock Text="💚 Conseils d'utilisation" FontSize="15" FontWeight="Bold"
+                                       Foreground="#5AE896" Margin="0,0,0,12"/>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#AACCAA" FontSize="11" LineHeight="20">
+                                <Run FontWeight="SemiBold" Text="• Utilisation hebdomadaire :"/>
+                                <Run Text=" Nettoyage Rapide pour maintenir l'ordinateur propre"/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run FontWeight="SemiBold" Text="• Joueurs :"/>
+                                <Run Text=" Gaming + Disque après chaque mise à jour majeure de jeux"/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run FontWeight="SemiBold" Text="• Nettoyage annuel :"/>
+                                <Run Text=" Nettoyage de Printemps une ou deux fois par an"/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run FontWeight="SemiBold" Text="• Problèmes système :"/>
+                                <Run Text=" Réparation Système si vous rencontrez des erreurs"/>
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run FontWeight="SemiBold" Text="• Développeurs :"/>
+                                <Run Text=" Sélection personnalisée pour éviter les caches de dev"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
 
                 </StackPanel>
 

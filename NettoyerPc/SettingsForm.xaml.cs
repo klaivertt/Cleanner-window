@@ -69,10 +69,11 @@ namespace NettoyerPc
         private void NavData_Click   (object sender, RoutedEventArgs e) { RefreshDataPage(); ShowPage(PageData, NavData); }
         private void NavAbout_Click  (object sender, RoutedEventArgs e) => ShowPage(PageAbout, NavAbout);
         private void NavApps_Click   (object sender, RoutedEventArgs e) => ShowPage(PageApps,  NavApps);
+        private void NavHelp_Click   (object sender, RoutedEventArgs e) => ShowPage(PageHelp,  NavHelp);
 
         private void ShowPage(StackPanel page, Button navBtn)
         {
-            PageGeneral.Visibility = PageData.Visibility = PageAbout.Visibility = PageApps.Visibility = Visibility.Collapsed;
+            PageGeneral.Visibility = PageData.Visibility = PageAbout.Visibility = PageApps.Visibility = PageHelp.Visibility = Visibility.Collapsed;
             page.Visibility = Visibility.Visible;
 
             var transparent = new SolidColorBrush(Colors.Transparent);
@@ -82,6 +83,7 @@ namespace NettoyerPc
             NavData.Background    = transparent;
             NavAbout.Background   = transparent;
             NavApps.Background    = transparent;
+            NavHelp.Background    = transparent;
             navBtn.Background     = active;
         }
 
@@ -121,6 +123,7 @@ namespace NettoyerPc
             NavData.Content    = L("nav.data");
             NavAbout.Content   = L("nav.about");
             NavApps.Content    = L("nav.apps");
+            NavHelp.Content    = L("nav.help");
 
             // Page Général
             TxtPageGeneral.Text         = L("page.general.title");
@@ -134,6 +137,18 @@ namespace NettoyerPc
             TxtLangSectionTitle.Text    = L("lang.section.title");
             TxtLangDesc.Text            = L("lang.description");
             TxtLangHint.Text            = "✓ " + L("lang.hint");
+
+            // Options avancées
+            TxtAdvancedSectionTitle.Text = L("settings.advanced.title");
+            TxtVerboseLabel.Text         = L("settings.verbose.label");
+            TxtVerboseDesc.Text          = L("settings.verbose.desc");
+            TxtConfirmCleanLabel.Text    = L("settings.confirmclean.label");
+            TxtConfirmCleanDesc.Text     = L("settings.confirmclean.desc");
+            TxtSoundNotifsLabel.Text     = L("settings.soundnotifs.label");
+            TxtSoundNotifsDesc.Text      = L("settings.soundnotifs.desc");
+
+            // Page Help
+            TxtPageHelp.Text = L("page.help.title");
 
             // Page Données
             TxtPageData.Text            = L("page.data.title");
@@ -316,6 +331,9 @@ namespace NettoyerPc
             ChkAutoRestore.IsChecked   = prefs.AutoRestorePoint;
             ChkAutoOpen.IsChecked      = prefs.AutoOpenReport;
             ChkSkipDisabled.IsChecked  = prefs.SkipDisabledApps;
+            ChkVerbose.IsChecked       = prefs.VerboseMode;
+            ChkConfirmClean.IsChecked  = prefs.ShowPreCleanSummary;
+            ChkSoundNotifs.IsChecked   = prefs.PlaySoundOnComplete;
             _isLoading = false;
         }
 
@@ -337,6 +355,27 @@ namespace NettoyerPc
         {
             if (_isLoading) return;
             UserPreferences.Current.SkipDisabledApps = ChkSkipDisabled.IsChecked == true;
+            UserPreferences.Current.Save();
+        }
+
+        private void ChkVerbose_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoading) return;
+            UserPreferences.Current.VerboseMode = ChkVerbose.IsChecked == true;
+            UserPreferences.Current.Save();
+        }
+
+        private void ChkConfirmClean_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoading) return;
+            UserPreferences.Current.ShowPreCleanSummary = ChkConfirmClean.IsChecked == true;
+            UserPreferences.Current.Save();
+        }
+
+        private void ChkSoundNotifs_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoading) return;
+            UserPreferences.Current.PlaySoundOnComplete = ChkSoundNotifs.IsChecked == true;
             UserPreferences.Current.Save();
         }
 

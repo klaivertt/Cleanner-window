@@ -9,17 +9,34 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace NettoyerPc
 {
+    public record RecentCleanupInfo(
+        string Grade,
+        string BadgeColor,
+        string Date,
+        string SpaceFreed,
+        string Duration,
+        string FilesCount
+    );
+
     public partial class MainForm : Window
     {
         private Core.UpdateManager.UpdateInfo? _pendingUpdate;
+        private DispatcherTimer? _notificationTimer;
 
         public MainForm()
         {
             InitializeComponent();
+            
+            // Setup keyboard shortcuts
+            KeyDown += MainForm_KeyDown;
+            
             // Restore window geometry
             var prefs = Core.UserPreferences.Current;
             if (!double.IsNaN(prefs.WindowLeft))
@@ -37,8 +54,211 @@ namespace NettoyerPc
                 Core.Localizer.SetLanguage(prefs.Language);
                 ApplyLanguage();
                 LoadLastReportStats();
+                LoadRecentCleanups();
+                UpdateSystemInfo();
                 _ = CheckUpdateSilentAsync();
             };
+        }
+
+        private void MainForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                switch (e.Key)
+                {
+                    case Key.D1:
+                        BtnComplete_Click(null!, null!);
+                        e.Handled = true;
+                        break;
+                    case Key.D2:
+                        BtnGamingDisk_Click(null!, null!);
+                        e.Handled = true;
+                        break;
+                    case Key.D3:
+                        BtnDeepClean_Click(null!, null!);
+                        e.Handled = true;
+                        break;
+                    case Key.S:
+                        BtnSettings_Click(null!, null!);
+                        e.Handled = true;
+                        break;
+                    case Key.R:
+                        BtnReports_Click(null!, null!);
+                        e.Handled = true;
+                        break;
+                    case Key.U:
+                        BtnCheckUpdate_Click(null!, null!);
+                        e.Handled = true;
+                        break;
+                }
+            }
+            else if (e.Key == Key.F5)
+            {
+                LoadRecentCleanups();
+                UpdateSystemInfo();
+                ShowNotification("✓ Informations actualisées", true);
+                e.Handled = true;
+            }
+        }
+
+        private void LoadRecentCleanups()
+        {
+            try
+            {
+                var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+                if (!Directory.Exists(reportDir)) return;
+
+                var allFiles = Directory.GetFiles(reportDir, "*.json")
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .Take(1)
+                    .ToList();
+
+                if (allFiles.Count == 0)
+                {
+                    RecentCleaningsPanel.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                var recentCleanups = new List<RecentCleanupInfo>();
+
+                foreach (var filePath in allFiles)
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(File.ReadAllText(filePath));
+                        var root = doc.RootElement;
+
+                        // Detect format version
+                        bool isV4 = root.TryGetProperty("reportVersion", out _);
+
+                        string grade = "?";
+                        string badgeColor = "#666666";
+                        DateTime date = File.GetLastWriteTime(filePath);
+                        long spaceFreed = 0;
+                        double durationSec = 0;
+                        long filesCount = 0;
+
+                        if (isV4)
+                        {
+                            if (root.TryGetProperty("performanceScore", out var ps) &&
+                                ps.TryGetProperty("grade", out var g))
+                            {
+                                grade = g.GetString() ?? "?";
+                                badgeColor = GetGradeBadgeColor(grade);
+                            }
+                            if (root.TryGetProperty("metadata", out var meta) &&
+                                meta.TryGetProperty("startTime", out var st))
+                                date = st.GetDateTime();
+                            if (root.TryGetProperty("summary", out var sum))
+                            {
+                                if (sum.TryGetProperty("totalSpaceFreedBytes", out var sp))
+                                    spaceFreed = sp.GetInt64();
+                                if (sum.TryGetProperty("totalFilesDeleted", out var fc))
+                                    filesCount = fc.GetInt64();
+                            }
+                            if (root.TryGetProperty("execution", out var exec) &&
+                                exec.TryGetProperty("durationSeconds", out var dur))
+                                durationSec = dur.GetDouble();
+                        }
+                        else
+                        {
+                            // Legacy format
+                            if (root.TryGetProperty("totalSpaceFreed", out var sp))
+                                spaceFreed = sp.GetInt64();
+                            if (root.TryGetProperty("totalFilesDeleted", out var fc))
+                                filesCount = fc.GetInt64();
+                            if (root.TryGetProperty("startTime", out var st))
+                                date = st.GetDateTime();
+                            // Legacy doesn't have grade
+                            grade = "−";
+                            badgeColor = "#444455";
+                        }
+
+                        recentCleanups.Add(new RecentCleanupInfo(
+                            grade,
+                            badgeColor,
+                            date.ToString("dd/MM/yyyy HH:mm"),
+                            Core.CleaningReport.FormatBytes(spaceFreed),
+                            FormatDuration(durationSec),
+                            $"{filesCount:N0} fichiers"
+                        ));
+                    }
+                    catch { /* Skip invalid reports */ }
+                }
+
+                if (recentCleanups.Count > 0)
+                {
+                    RecentCleaningsList.ItemsSource = recentCleanups;
+                    RecentCleaningsPanel.Visibility = Visibility.Visible;
+                    
+                    // Fade-in animation
+                    var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(400))
+                    {
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    RecentCleaningsPanel.BeginAnimation(OpacityProperty, anim);
+                }
+            }
+            catch { /* Ignore */ }
+        }
+
+        private void UpdateSystemInfo()
+        {
+            try
+            {
+                var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed);
+                long totalFree = drives.Sum(d => d.TotalFreeSpace);
+                long totalSize = drives.Sum(d => d.TotalSize);
+                double freePercent = totalSize > 0 ? (double)totalFree / totalSize * 100 : 0;
+
+                TxtSystemInfo.Text = $"💾 {Core.CleaningReport.FormatBytes(totalFree)} libre ({freePercent:F1}%)";
+            }
+            catch
+            {
+                TxtSystemInfo.Text = "";
+            }
+        }
+
+        private static string GetGradeBadgeColor(string grade) => grade switch
+        {
+            "S" => "#FFD700",
+            "A" => "#2ECC71",
+            "B" => "#3498DB",
+            "C" => "#F39C12",
+            "D" => "#E67E22",
+            "F" => "#E74C3C",
+            _ => "#666666"
+        };
+
+        private static string FormatDuration(double seconds)
+        {
+            if (seconds < 60) return $"{seconds:F0}s";
+            if (seconds < 3600) return $"{seconds / 60:F0}m {seconds % 60:F0}s";
+            return $"{seconds / 3600:F1}h";
+        }
+
+        private void ShowNotification(string message, bool success)
+        {
+            NotificationText.Text = message;
+            NotificationBar.Background = new SolidColorBrush(success 
+                ? (Color)ColorConverter.ConvertFromString("#2A5A2A")! 
+                : (Color)ColorConverter.ConvertFromString("#5A2A2A")!);
+            NotificationBar.Visibility = Visibility.Visible;
+
+            _notificationTimer?.Stop();
+            _notificationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _notificationTimer.Tick += (s, e) =>
+            {
+                NotificationBar.Visibility = Visibility.Collapsed;
+                _notificationTimer.Stop();
+            };
+            _notificationTimer.Start();
+        }
+
+        private void CloseNotification_Click(object sender, RoutedEventArgs e)
+        {
+            _notificationTimer?.Stop();
+            NotificationBar.Visibility = Visibility.Collapsed;
         }
 
         /// <summary>Vérifie les mises à jour en arrière-plan et affiche le bandeau si disponible.</summary>
@@ -101,6 +321,43 @@ namespace NettoyerPc
             BtnMaximize.Content = WindowState == WindowState.Maximized ? "❐" : "⬜";
             // Fix : empêche le débordement sous la barre des tâches en mode maximisé
             RootGrid.Margin = WindowState == WindowState.Maximized ? new Thickness(6) : new Thickness(0);
+        }
+
+        // ── Animations des cartes ──────────────────────────────────────────────────────
+        private void Card_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is Border border)
+            {
+                var animation = new DoubleAnimation
+                {
+                    To = 1.02,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+                var scaleTransform = new ScaleTransform(1, 1);
+                border.RenderTransform = scaleTransform;
+                border.RenderTransformOrigin = new Point(0.5, 0.5);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
+            }
+        }
+
+        private void Card_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is Border border)
+            {
+                var animation = new DoubleAnimation
+                {
+                    To = 1.0,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+                if (border.RenderTransform is ScaleTransform scaleTransform)
+                {
+                    scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
+                    scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
+                }
+            }
         }
 
         // ── Préférences : sauvegarde position / taille ─────────────────────────────────
@@ -236,6 +493,46 @@ namespace NettoyerPc
 
             // Update banner
             BtnBannerInstall.Content = L("update.banner.install");
+
+            // Recent cleanups section
+            TxtRecentTitle.Text = L("main.recent.title");
+            TxtRecentBadge.Text = L("main.recent.badge");
+
+            // Apply tooltips
+            ApplyTooltips();
+        }
+
+        private void ApplyTooltips()
+        {
+            var L = Core.Localizer.T;
+
+            // Header buttons
+            BtnSettings.ToolTip = L("tooltip.settings");
+            BtnCheckUpdate.ToolTip = L("tooltip.updates");
+            BtnReports.ToolTip = L("tooltip.reports");
+
+            // Info buttons
+            BtnInfoQuick.ToolTip = L("tooltip.info.quick");
+            BtnInfoGaming.ToolTip = L("tooltip.info.gaming");
+            BtnInfoDeep.ToolTip = L("tooltip.info.deep");
+            BtnInfoSysOpt.ToolTip = L("tooltip.info.sysopt");
+
+            // Action buttons
+            BtnComplete.ToolTip = L("tooltip.btn.quick");
+            BtnGamingDisk.ToolTip = L("tooltip.btn.gaming");
+            BtnDeepClean.ToolTip = L("tooltip.btn.deep");
+            BtnSysOpt.ToolTip = L("tooltip.btn.sysopt");
+            BtnDriverUpdate.ToolTip = L("tooltip.btn.driver.update");
+            BtnDriverScan.ToolTip = L("tooltip.btn.driver.scan");
+            BtnThirdParty.ToolTip = L("tooltip.btn.thirdparty");
+            BtnBloatware.ToolTip = L("tooltip.btn.bloatware");
+
+            // Footer shortcuts
+            if (TxtShortcuts != null)
+            {
+                TxtShortcuts.Text = L("footer.shortcuts.display");
+                TxtShortcuts.ToolTip = L("tooltip.shortcuts");
+            }
         }
 
         // ── Helpers Inline ─────────────────────────────────────────────────────
@@ -414,6 +711,14 @@ namespace NettoyerPc
             viewer.ShowDialog();
         }
 
+        private void BtnViewLastReport_Click(object sender, RoutedEventArgs e)
+        {
+            var viewer = new ReportViewerForm();
+            viewer.Owner = this;
+            viewer.ShowDialog();
+            // Le viewer s'ouvrira avec le dernier rapport sélectionné par défaut
+        }
+
         private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
         {
             var form = new UpdateCheckForm();
@@ -428,6 +733,102 @@ namespace NettoyerPc
             LoadLastReportStats();  // rafraîchit si rapports supprimés
         }
 
+        // ── Info modals ────────────────────────────────────────────────────────────────
+        private void BtnInfoQuick_Click(object sender, RoutedEventArgs e)
+        {
+            var L = Core.Localizer.T;
+            MessageBox.Show(
+                $"{L("info.quick.header")}\n\n" +
+                $"{L("info.quick.duration")}\n\n" +
+                $"{L("info.quick.cleaned.title")}\n" +
+                $"  {L("info.quick.cleaned.1")}\n" +
+                $"  {L("info.quick.cleaned.2")}\n" +
+                $"  {L("info.quick.cleaned.3")}\n" +
+                $"  {L("info.quick.cleaned.4")}\n" +
+                $"  {L("info.quick.cleaned.5")}\n" +
+                $"  {L("info.quick.cleaned.6")}\n\n" +
+                $"{L("info.quick.guarantee.title")}\n" +
+                $"{L("info.quick.guarantee.text")}\n\n" +
+                $"{L("info.quick.reco")}",
+                L("info.quick.title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
+        private void BtnInfoGaming_Click(object sender, RoutedEventArgs e)
+        {
+            var L = Core.Localizer.T;
+            MessageBox.Show(
+                $"{L("info.gaming.header")}\n\n" +
+                $"{L("info.gaming.duration")}\n\n" +
+                $"{L("info.gaming.clean.title")}\n" +
+                $"  {L("info.gaming.clean.1")}\n" +
+                $"  {L("info.gaming.clean.2")}\n" +
+                $"  {L("info.gaming.clean.3")}\n" +
+                $"  {L("info.gaming.clean.4")}\n\n" +
+                $"{L("info.gaming.disk.title")}\n" +
+                $"  {L("info.gaming.disk.1")}\n" +
+                $"  {L("info.gaming.disk.2")}\n" +
+                $"  {L("info.gaming.disk.3")}\n\n" +
+                $"{L("info.gaming.guarantee.title")}\n" +
+                $"{L("info.gaming.guarantee.1")}\n" +
+                $"{L("info.gaming.guarantee.2")}\n\n" +
+                $"{L("info.gaming.reco")}",
+                L("info.gaming.title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
+        private void BtnInfoDeep_Click(object sender, RoutedEventArgs e)
+        {
+            var L = Core.Localizer.T;
+            MessageBox.Show(
+                $"{L("info.deep.header")}\n\n" +
+                $"{L("info.deep.duration")}\n\n" +
+                $"{L("info.deep.includes")}\n" +
+                $"  {L("info.deep.cleaned.1")}\n" +
+                $"  {L("info.deep.cleaned.2")}\n" +
+                $"  {L("info.deep.cleaned.3")}\n" +
+                $"  {L("info.deep.cleaned.4")}\n" +
+                $"  {L("info.deep.cleaned.5")}\n" +
+                $"  {L("info.deep.cleaned.6")}\n\n" +
+                $"{L("info.deep.note.title")}\n" +
+                $"{L("info.deep.note.1")}\n" +
+                $"{L("info.deep.note.2")}\n\n" +
+                $"{L("info.deep.note.3")}\n\n" +
+                $"{L("info.deep.reco")}",
+                L("info.deep.title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
+        private void BtnInfoSysOpt_Click(object sender, RoutedEventArgs e)
+        {
+            var L = Core.Localizer.T;
+            MessageBox.Show(
+                $"{L("info.sysopt.header")}\n\n" +
+                $"{L("info.sysopt.duration")}\n\n" +
+                $"{L("info.sysopt.steps.title")}\n" +
+                $"  {L("info.sysopt.steps.1")}\n" +
+                $"  {L("info.sysopt.steps.2")}\n" +
+                $"  {L("info.sysopt.steps.3")}\n" +
+                $"  {L("info.sysopt.steps.4")}\n" +
+                $"  {L("info.sysopt.steps.5")}\n" +
+                $"  {L("info.sysopt.steps.6")}\n" +
+                $"  {L("info.sysopt.steps.7")}\n\n" +
+                $"{L("info.sysopt.info.title")}\n" +
+                $"{L("info.sysopt.info.1")}\n" +
+                $"{L("info.sysopt.info.2")}\n\n" +
+                $"{L("info.sysopt.reco")}",
+                L("info.sysopt.title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+
         // Helpers
 
         private void LaunchCleaning(Core.CleaningMode mode)
@@ -437,6 +838,9 @@ namespace NettoyerPc
             form.ShowDialog();
             Show();
             LoadLastReportStats();
+            LoadRecentCleanups();
+            UpdateSystemInfo();
+            ShowNotification("✓ Nettoyage terminé avec succès", true);
         }
 
         private void LaunchCleaningCustomModules(HashSet<string> steps)
@@ -446,6 +850,9 @@ namespace NettoyerPc
             form.ShowDialog();
             Show();
             LoadLastReportStats();
+            LoadRecentCleanups();
+            UpdateSystemInfo();
+            ShowNotification("✓ Nettoyage terminé avec succès", true);
         }
 
         private bool Confirm(string message)

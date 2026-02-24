@@ -15,11 +15,34 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
+        <!-- Animations -->
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+        
         <Style x:Key="StatCard" TargetType="Border">
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="18,14"/>
             <Setter Property="Margin" Value="0,0,12,0"/>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.4">
+                                <DoubleAnimation.EasingFunction>
+                                    <QuadraticEase EasingMode="EaseOut"/>
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
         </Style>
+        
         <Style x:Key="Btn" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -53,6 +76,18 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Zone de notification -->
+        <Border x:Name="NotificationBar" Grid.Row="0" Background="#2A5A2A" Padding="12,8" 
+                Visibility="Collapsed" Panel.ZIndex="999">
+            <Grid>
+                <TextBlock x:Name="NotificationText" Text="" FontSize="12" Foreground="White" 
+                          VerticalAlignment="Center"/>
+                <Button Content="✕" Click="CloseNotification_Click" 
+                        Background="Transparent" BorderThickness="0" Foreground="White"
+                        HorizontalAlignment="Right" Cursor="Hand" Padding="8,0"/>
+            </Grid>
+        </Border>
+
         <!-- EN-TETE -->
         <Border Grid.Row="0" Background="#12121F">
             <StackPanel>
@@ -78,10 +113,18 @@
                                    FontSize="12" Foreground="#888" Margin="0,3,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="BtnOpenFolder" Content="Ouvrir le dossier" Click="BtnOpenFolder_Click"
-                                Style="{StaticResource Btn}" Background="#2A2A3E" Margin="0,0,8,0"/>
-                        <Button x:Name="BtnCloseRv" Content="Fermer" Click="BtnClose_Click"
-                                Style="{StaticResource Btn}" Background="#8B1A1A"/>
+                        <Button x:Name="BtnExportReport" Content="📄 Exporter" Click="BtnExportReport_Click"
+                                Style="{StaticResource Btn}" Background="#2A3E2A" Margin="0,0,8,0" 
+                                IsEnabled="False" ToolTip="Copier le chemin du rapport (Ctrl+E)"/>
+                        <Button x:Name="BtnRefresh" Content="🔄 Actualiser" Click="BtnRefresh_Click"
+                                Style="{StaticResource Btn}" Background="#1A3A5A" Margin="0,0,8,0"
+                                ToolTip="Recharger la liste des rapports (F5)"/>
+                        <Button x:Name="BtnOpenFolder" Content="📁 Dossier" Click="BtnOpenFolder_Click"
+                                Style="{StaticResource Btn}" Background="#2A2A3E" Margin="0,0,8,0"
+                                ToolTip="Ouvrir le dossier Reports (Ctrl+O)"/>
+                        <Button x:Name="BtnCloseRv" Content="✕ Fermer" Click="BtnClose_Click"
+                                Style="{StaticResource Btn}" Background="#8B1A1A"
+                                ToolTip="Fermer la fenêtre (Echap)"/>
                     </StackPanel>
                 </Grid>
             </StackPanel>
@@ -97,6 +140,74 @@
             <!-- SIDEBAR : liste rapports -->
             <Border Grid.Column="0" Background="#12121F" BorderBrush="#2A2A3E" BorderThickness="0,0,1,0">
                 <DockPanel>
+                    <!-- Statistiques globales en haut -->
+                    <Border DockPanel.Dock="Top" Background="#1A1A2E" Padding="12" Margin="8,8,8,0" CornerRadius="6">
+                        <StackPanel>
+                            <TextBlock Text="STATISTIQUES GLOBALES" FontSize="9" FontWeight="Bold" 
+                                      Foreground="#888" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="TxtGlobalReports" Text="—" FontSize="16" FontWeight="Bold" 
+                                              Foreground="#6BBBFF"/>
+                                    <TextBlock Text="rapports" FontSize="9" Foreground="#666"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock x:Name="TxtGlobalSpace" Text="—" FontSize="16" FontWeight="Bold" 
+                                              Foreground="#5AE896"/>
+                                    <TextBlock Text="libérés" FontSize="9" Foreground="#666"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Barre de recherche -->
+                    <Border DockPanel.Dock="Top" Padding="8,8,8,4">
+                        <Border Background="#1A1A2E" CornerRadius="4" Padding="8,6">
+                            <Grid>
+                                <TextBox x:Name="SearchBox" 
+                                        Background="Transparent" 
+                                        Foreground="White" 
+                                        BorderThickness="0"
+                                        FontSize="11"
+                                        TextChanged="SearchBox_TextChanged"
+                                        ToolTip="Rechercher un rapport par date ou nom (Ctrl+F)"/>
+                                <TextBlock x:Name="SearchPlaceholder" 
+                                          Text="🔍 Rechercher..." 
+                                          FontSize="11"
+                                          Foreground="#555"
+                                          IsHitTestVisible="False"
+                                          Margin="2,0,0,0"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+                    
+                    <!-- Options de tri -->
+                    <Border DockPanel.Dock="Top" Padding="8,4,8,8">
+                        <Border Background="#1A1A2E" CornerRadius="4" Padding="8,6">
+                            <StackPanel>
+                                <TextBlock Text="TRIER PAR" FontSize="8" Foreground="#666" FontWeight="Bold" Margin="0,0,0,4"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="BtnSortDate" Content="📅 Date" Click="BtnSortDate_Click"
+                                            Background="#2A2A3E" Foreground="White" BorderThickness="0"
+                                            Padding="6,3" FontSize="9" Margin="0,0,4,0" Cursor="Hand"
+                                            ToolTip="Trier par date (plus récents d'abord)"/>
+                                    <Button x:Name="BtnSortSpace" Content="💾 Espace" Click="BtnSortSpace_Click"
+                                            Background="#1A1A2E" Foreground="#888" BorderThickness="0"
+                                            Padding="6,3" FontSize="9" Margin="0,0,4,0" Cursor="Hand"
+                                            ToolTip="Trier par espace libéré"/>
+                                    <Button x:Name="BtnSortDuration" Content="⏱️ Durée" Click="BtnSortDuration_Click"
+                                            Background="#1A1A2E" Foreground="#888" BorderThickness="0"
+                                            Padding="6,3" FontSize="9" Cursor="Hand"
+                                            ToolTip="Trier par durée d'exécution"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Border>
+                    
                     <Border DockPanel.Dock="Top" Padding="16,12,16,8">
                         <TextBlock x:Name="TxtSidebarHistory" Text="Historique" FontSize="13" FontWeight="SemiBold" Foreground="#AAAACC"/>
                     </Border>
@@ -199,6 +310,53 @@
                                     </StackPanel>
                                 </Border>
                             </Grid>
+
+                            <!-- SCORE DE PERFORMANCE (v4.0) -->
+                            <Border x:Name="PerformanceScorePanel" Visibility="Collapsed" 
+                                    Background="#1E2E3E" CornerRadius="10" Padding="20,16" Margin="0,0,0,20">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Score et Grade -->
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border x:Name="ScoreBadge" Background="#1E3E2E" CornerRadius="50" Width="70" Height="70" Margin="0,0,16,0">
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <TextBlock x:Name="TxtScoreValue" Text="—" FontSize="24" FontWeight="Bold" 
+                                                          Foreground="#5AE896" HorizontalAlignment="Center"/>
+                                                <TextBlock x:Name="TxtScoreGrade" Text="—" FontSize="14" FontWeight="SemiBold" 
+                                                          Foreground="#4EC98C" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="SCORE DE PERFORMANCE" FontSize="11" Foreground="#888" FontWeight="Bold"/>
+                                            <TextBlock x:Name="TxtScoreMessage" Text="—" FontSize="13" Foreground="White" 
+                                                      Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="300"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <!-- Benchmark disque -->
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                        <TextBlock Text="BENCHMARK DISQUE" FontSize="10" Foreground="#888" FontWeight="Bold" 
+                                                  HorizontalAlignment="Right"/>
+                                        <TextBlock x:Name="TxtBenchmarkDelta" Text="—" FontSize="12" Foreground="#FFB830" 
+                                                  Margin="0,4,0,0" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- REPARTITION PAR CATEGORIE (v4.0) -->
+                            <Border x:Name="CategoryPanel" Visibility="Collapsed" 
+                                    Background="#1A1A2E" CornerRadius="10" Padding="16,12" Margin="0,0,0,20">
+                                <StackPanel>
+                                    <TextBlock Text="RÉPARTITION PAR CATÉGORIE" FontSize="10" 
+                                              Foreground="#888" FontWeight="Bold" Margin="0,0,0,12"/>
+                                    <ItemsControl x:Name="CategoryList"/>
+                                </StackPanel>
+                            </Border>
 
                             <!-- TITRE SECTION ETAPES -->
                             <TextBlock x:Name="TxtDetailTitle" Text="Détail des opérations" FontSize="14" FontWeight="Bold"

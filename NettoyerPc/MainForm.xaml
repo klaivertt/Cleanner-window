@@ -20,6 +20,17 @@
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="20,16"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
+            <EventSetter Event="MouseEnter" Handler="Card_MouseEnter"/>
+            <EventSetter Event="MouseLeave" Handler="Card_MouseLeave"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect Color="#6BBBFF" BlurRadius="12" ShadowDepth="0" Opacity="0.3"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="BtnPrimary" TargetType="Button">
             <Setter Property="Height" Value="40"/>
@@ -41,6 +52,11 @@
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.7"/>
+                                <Setter TargetName="Bd" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.98" ScaleY="0.98"/>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -91,11 +107,14 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="BtnSettings" Content="⚙️ Paramètres" Click="BtnSettings_Click"
-                                Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36" Margin="0,0,8,0"/>
+                                Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36" Margin="0,0,8,0"
+                                ToolTip="Ouvrir les paramètres (Ctrl+S)"/>
                         <Button x:Name="BtnCheckUpdate" Content="🔄 Mises à jour" Click="BtnCheckUpdate_Click"
-                                Style="{StaticResource BtnPrimary}" Background="#1A3A6B" Height="36" Margin="0,0,8,0"/>
+                                Style="{StaticResource BtnPrimary}" Background="#1A3A6B" Height="36" Margin="0,0,8,0"
+                                ToolTip="Vérifier les mises à jour (Ctrl+U)"/>
                         <Button x:Name="BtnReports" Content="📊 Mes rapports" Click="BtnReports_Click"
-                                Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36"/>
+                                Style="{StaticResource BtnPrimary}" Background="#2A2A3E" Height="36"
+                                ToolTip="Consulter les rapports (Ctrl+R)"/>
                     </StackPanel>
                 </Grid>
             </StackPanel>
@@ -104,6 +123,19 @@
         <!-- CONTENU PRINCIPAL -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#1E1E2E">
             <StackPanel Margin="24,16,24,16">
+
+                <!-- NOTIFICATION BAR -->
+                <Border x:Name="NotificationBar" Visibility="Collapsed"
+                        Background="#2A5A2A" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
+                    <Grid>
+                        <TextBlock x:Name="NotificationText" FontSize="12" Foreground="White" 
+                                   VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <Button Content="✕" Click="CloseNotification_Click"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Background="Transparent" Foreground="White" BorderThickness="0"
+                                FontSize="14" Padding="8,4" Cursor="Hand" Opacity="0.7"/>
+                    </Grid>
+                </Border>
 
                 <!-- BANDEAU MISE À JOUR DISPONIBLE (affiché au démarrage si update dispo) -->
                 <Border x:Name="UpdateBanner" Visibility="Collapsed"
@@ -154,25 +186,104 @@
                     </Grid>
                 </Border>
 
+                <!-- SECTION INFORMATIONS SYSTEME ET DERNIERS NETTOYAGES -->
+                <Border x:Name="RecentCleaningsPanel" Background="#12121F" BorderBrush="#2A2A4A" BorderThickness="1"
+                        CornerRadius="10" Padding="20,16" Margin="0,0,0,16" Visibility="Collapsed">
+                    <Border.Effect>
+                        <DropShadowEffect Color="#000000" BlurRadius="10" ShadowDepth="3" Opacity="0.4"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Grid Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="TxtRecentTitle" Text="📊 Dernier nettoyage" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                <Border Background="#1A3A5A" CornerRadius="4" Padding="8,3" Margin="12,0,0,0">
+                                    <TextBlock x:Name="TxtRecentBadge" Text="RÉCENT" FontSize="10" FontWeight="Bold" Foreground="#4AACFF"/>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="#4EC98C" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="TxtSystemInfo" Text="" FontSize="12" Foreground="#4EC98C" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Grid>
+                        <ItemsControl x:Name="RecentCleaningsList" Margin="0,0,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#1A1A2E" CornerRadius="8" Padding="16,14" Margin="0,0,0,0"
+                                            BorderBrush="#3A3A5A" BorderThickness="1">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.3"/>
+                                        </Border.Effect>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="{Binding BadgeColor}" 
+                                                    CornerRadius="6" Padding="14,10" Margin="0,0,16,0" VerticalAlignment="Center"
+                                                    x:Name="GradeBadgeBorder"
+                                                    ToolTip="Grade de performance : S=Exceptionnel, A=Excellent, B=Bon, C=Moyen, D=Faible, F=Échec">
+                                                <Border.Effect>
+                                                    <DropShadowEffect Color="{Binding BadgeColor}" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/>
+                                                </Border.Effect>
+                                                <TextBlock Text="{Binding Grade}" FontSize="20" FontWeight="Bold" 
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                                <TextBlock Text="{Binding Date}" FontSize="12" Foreground="#888899" Margin="0,0,0,6"/>
+                                                <TextBlock Text="{Binding SpaceFreed}" FontSize="18" FontWeight="Bold" Foreground="#5AE896" Margin="0,0,0,4"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="16"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                        <TextBlock Text="⏱️ " FontSize="11" Foreground="#6BBBFF"/>
+                                                        <TextBlock Text="{Binding Duration}" FontSize="11" Foreground="#AABBCC"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                        <TextBlock Text="📄 " FontSize="11" Foreground="#FFB830"/>
+                                                        <TextBlock Text="{Binding FilesCount}" FontSize="11" Foreground="#AABBCC"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Content="📊 Voir le rapport" 
+                                                    Click="BtnViewLastReport_Click"                                                    x:Name="BtnViewReport"                                                    Style="{StaticResource BtnPrimary}"
+                                                    Background="#1A5ECC" Height="38"
+                                                    Padding="16,10" FontSize="12"
+                                                    VerticalAlignment="Center"
+                                                    ToolTip="Ouvrir le rapport détaillé (Ctrl+R)"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
                 <!-- BOUTON VEDETTE : SELECTION PERSONNALISEE -->
                 <Border Background="#0D1F3C" BorderBrush="#2255AA" BorderThickness="2"
                         CornerRadius="12" Padding="24,18" Margin="0,0,0,20">
+                    <Border.Effect>
+                        <DropShadowEffect Color="#2255AA" BlurRadius="16" ShadowDepth="0" Opacity="0.3"/>
+                    </Border.Effect>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <TextBlock x:Name="TxtCustomTitle" Text="CHOISIR CE QUE JE VEUX NETTOYER"
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock x:Name="TxtCustomTitle" Text="🎯 CHOISIR CE QUE JE VEUX NETTOYER"
                                            FontSize="17" FontWeight="Bold" Foreground="White"/>
                                 <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A"
                                         Margin="12,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock x:Name="TxtCustomBadge" Text="RECOMMANDE" FontSize="10" FontWeight="Bold" Foreground="#5AE896"/>
+                                    <TextBlock x:Name="TxtCustomBadge" Text="RECOMMANDÉ" FontSize="10" FontWeight="Bold" Foreground="#5AE896"/>
                                 </Border>
                             </StackPanel>
-                            <TextBlock x:Name="TxtCustomBody" Style="{StaticResource CardBody}"
-                                       Text="Cochez exactement ce que vous voulez supprimer. Chaque option est expliquee avec ce qu elle touche et ce qu elle ne touche pas. Controle total garanti."/>
+                            <TextBlock x:Name="TxtCustomBody" Style="{StaticResource CardBody}" Foreground="#AACCEE"
+                                       Text="Cochez exactement ce que vous voulez supprimer. Chaque option est expliquée avec ce qu'elle touche et ce qu'elle ne touche pas. Contrôle total garanti."/>
                         </StackPanel>
                         <Button Grid.Column="1" x:Name="BtnCustom" Content="OUVRIR LA SELECTION" Click="BtnCustom_Click"
                                 Style="{StaticResource BtnPrimary}" Background="#1A5ECC"
@@ -194,15 +305,22 @@
                         <!-- Nettoyage Rapide -->
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#2A2A5A" BorderThickness="1">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock x:Name="TxtQuickTitle" Text="Nettoyage Rapide" FontSize="15" FontWeight="Bold" Foreground="White"/>
-                                    <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtQuickBadge" Text="100% sur" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
-                                    </Border>
-                                    <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" Margin="6,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtQuickTime" Text="5-15 min" FontSize="10" Foreground="#888"/>
-                                    </Border>
-                                </StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="TxtQuickTitle" Text="Nettoyage Rapide" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                        <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtQuickBadge" Text="100% sur" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" Margin="6,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtQuickTime" Text="5-15 min" FontSize="10" Foreground="#888"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Button x:Name="BtnInfoQuick" Content="ℹ️" Click="BtnInfoQuick_Click"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Background="Transparent" Foreground="#6BBBFF" BorderThickness="0"
+                                            FontSize="18" Padding="6,2" Cursor="Hand" Opacity="0.7"
+                                            ToolTip="Plus d'informations sur ce mode"/>
+                                </Grid>
                                 <TextBlock x:Name="TxtQuickBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Ce qui est nettoye :"/>
                                     <LineBreak/><Run Text="  Fichiers temporaires Windows (%TEMP%, C:\Windows\Temp)"/>
@@ -217,19 +335,27 @@
                                     <Run Text="saves, fichiers jeux, apps installees, documents"/>
                                 </TextBlock>
                                 <Button x:Name="BtnComplete" Content="DEMARRER LE NETTOYAGE RAPIDE" Click="BtnComplete_Click"
-                                        Style="{StaticResource BtnPrimary}" Background="#1A6B3A"/>
+                                        Style="{StaticResource BtnPrimary}" Background="#1A6B3A"
+                                        ToolTip="Nettoyage rapide et sûr (Ctrl+1)"/>
                             </StackPanel>
                         </Border>
 
                         <!-- Gaming + Disque -->
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#3A2A5A" BorderThickness="1">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock x:Name="TxtGamingTitle" Text="Gaming + Optimisation Disque" FontSize="15" FontWeight="Bold" Foreground="White"/>
-                                    <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtGamingBadge" Text="Sur pour les jeux" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
-                                    </Border>
-                                </StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="TxtGamingTitle" Text="Gaming + Optimisation Disque" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                        <Border Style="{StaticResource RiskBadge}" Background="#1A6B3A" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtGamingBadge" Text="Sur pour les jeux" FontSize="10" Foreground="#5AE896" FontWeight="Bold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Button x:Name="BtnInfoGaming" Content="ℹ️" Click="BtnInfoGaming_Click"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Background="Transparent" Foreground="#B19CD9" BorderThickness="0"
+                                            FontSize="18" Padding="6,2" Cursor="Hand" Opacity="0.7"
+                                            ToolTip="Plus d'informations sur ce mode"/>
+                                </Grid>
                                 <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" HorizontalAlignment="Left" Margin="0,0,0,10">
                                     <TextBlock x:Name="TxtGamingTime" Text="20-60 min selon disque" FontSize="10" Foreground="#888"/>
                                 </Border>
@@ -251,7 +377,8 @@
                                     <Run Text="fichiers jeux, saves, mods, configurations"/>
                                 </TextBlock>
                                 <Button x:Name="BtnGamingDisk" Content="OPTIMISER GAMING + DISQUE" Click="BtnGamingDisk_Click"
-                                        Style="{StaticResource BtnPrimary}" Background="#5C2D91"/>
+                                        Style="{StaticResource BtnPrimary}" Background="#5C2D91"
+                                        ToolTip="Nettoyage gaming et optimisation disque (Ctrl+2)"/>
                             </StackPanel>
                         </Border>
 
@@ -266,15 +393,22 @@
                         <!-- Nettoyage de Printemps -->
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#3A2A2A" BorderThickness="1">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock x:Name="TxtDeepTitle" Text="Nettoyage de Printemps" FontSize="15" FontWeight="Bold" Foreground="White"/>
-                                    <Border Style="{StaticResource RiskBadge}" Background="#4A2A00" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtDeepBadge" Text="Modere" FontSize="10" Foreground="#FFB830" FontWeight="Bold"/>
-                                    </Border>
-                                    <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" Margin="6,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtDeepTime" Text="60-120 min" FontSize="10" Foreground="#888"/>
-                                    </Border>
-                                </StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="TxtDeepTitle" Text="Nettoyage de Printemps" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                        <Border Style="{StaticResource RiskBadge}" Background="#4A2A00" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtDeepBadge" Text="Modere" FontSize="10" Foreground="#FFB830" FontWeight="Bold"/>
+                                        </Border>
+                                        <Border Style="{StaticResource RiskBadge}" Background="#2A2A3E" Margin="6,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtDeepTime" Text="60-120 min" FontSize="10" Foreground="#888"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Button x:Name="BtnInfoDeep" Content="ℹ️" Click="BtnInfoDeep_Click"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Background="Transparent" Foreground="#FFB830" BorderThickness="0"
+                                            FontSize="18" Padding="6,2" Cursor="Hand" Opacity="0.7"
+                                            ToolTip="Plus d'informations sur ce mode"/>
+                                </Grid>
                                 <TextBlock x:Name="TxtDeepBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="Tout le Nettoyage Rapide +"/>
                                     <LineBreak/><Run Text="  Caches de developpement (npm, pip, gradle, NuGet)"/>
@@ -288,19 +422,27 @@
                                     <Run Text="Les caches dev (npm, pip...) se re-telechargeront au prochain build. Normal."/>
                                 </TextBlock>
                                 <Button x:Name="BtnDeepClean" Content="NETTOYAGE DE PRINTEMPS" Click="BtnDeepClean_Click"
-                                        Style="{StaticResource BtnPrimary}" Background="#8B1A1A"/>
+                                        Style="{StaticResource BtnPrimary}" Background="#8B1A1A"
+                                        ToolTip="Nettoyage profond et approfondi (Ctrl+3)"/>
                             </StackPanel>
                         </Border>
 
                         <!-- Reparation Systeme -->
                         <Border Style="{StaticResource Card}" Background="#1A1A2E" BorderBrush="#1A3A4A" BorderThickness="1">
                             <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock x:Name="TxtSysTitle" Text="Reparation et Optimisation Systeme" FontSize="15" FontWeight="Bold" Foreground="White"/>
-                                    <Border Style="{StaticResource RiskBadge}" Background="#1A3A5A" Margin="10,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock x:Name="TxtSysBadge" Text="Systeme" FontSize="10" Foreground="#4AACFF" FontWeight="Bold"/>
-                                    </Border>
-                                </StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="TxtSysTitle" Text="Reparation et Optimisation Systeme" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                        <Border Style="{StaticResource RiskBadge}" Background="#1A3A5A" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtSysBadge" Text="Systeme" FontSize="10" Foreground="#4AACFF" FontWeight="Bold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <Button x:Name="BtnInfoSysOpt" Content="ℹ️" Click="BtnInfoSysOpt_Click"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Background="Transparent" Foreground="#4AACFF" BorderThickness="0"
+                                            FontSize="18" Padding="6,2" Cursor="Hand" Opacity="0.7"
+                                            ToolTip="Plus d'informations sur ce mode"/>
+                                </Grid>
                                 <TextBlock x:Name="TxtSysBody" Style="{StaticResource CardBody}" Margin="0,0,0,8">
                                     <Run FontWeight="SemiBold" Foreground="#6BBBFF" Text="7 etapes de reparation Windows :"/>
                                     <LineBreak/><Run Text="  SFC /scannow — verifie l integrite des fichiers systeme"/>
@@ -315,7 +457,8 @@
                                     <Run Text="SFC et DISM peuvent durer 30-90 min. Le PC reste utilisable."/>
                                 </TextBlock>
                                 <Button x:Name="BtnSysOpt" Content="REPARER ET OPTIMISER WINDOWS" Click="BtnSysOpt_Click"
-                                        Style="{StaticResource BtnPrimary}" Background="#004E7C"/>
+                                        Style="{StaticResource BtnPrimary}" Background="#004E7C"
+                                        ToolTip="Réparation complète du système Windows"/>
                             </StackPanel>
                         </Border>
 
@@ -336,9 +479,11 @@
                                 </TextBlock>
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="BtnDriverUpdate" Content="OUVRIR MISES A JOUR" Click="BtnDriverUpdate_Click"
-                                            Style="{StaticResource BtnPrimary}" Background="#1A4A7C" Margin="0,0,8,0"/>
+                                            Style="{StaticResource BtnPrimary}" Background="#1A4A7C" Margin="0,0,8,0"
+                                            ToolTip="Ouvrir Windows Update pour les pilotes"/>
                                     <Button x:Name="BtnDriverScan" Content="DIAGNOSTIC" Click="BtnDriverScan_Click"
-                                            Style="{StaticResource BtnPrimary}" Background="#2A2A3E"/>
+                                            Style="{StaticResource BtnPrimary}" Background="#2A2A3E"
+                                            ToolTip="Diagnostiquer les problèmes de pilotes"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -361,7 +506,8 @@
                                     <LineBreak/><Run Text="  Steam logs/dumps — Epic logs — Battle.net cache"/>
                                 </TextBlock>
                                 <Button x:Name="BtnThirdParty" Content="NETTOYER LES CACHES D APPS" Click="BtnThirdParty_Click"
-                                        Style="{StaticResource BtnPrimary}" Background="#3B1E6E"/>
+                                        Style="{StaticResource BtnPrimary}" Background="#3B1E6E"
+                                        ToolTip="Nettoyer les caches et logs d'applications tierces"/>
                             </StackPanel>
                         </Border>
 
@@ -391,7 +537,8 @@
                         </StackPanel>
                         <Button Grid.Column="1" x:Name="BtnBloatware" Content="Supprimer les Bloatwares" Click="BtnBloatware_Click"
                                 Style="{StaticResource BtnPrimary}" Background="#7A4400"
-                                Height="40" Margin="20,0,0,0" VerticalAlignment="Center"/>
+                                Height="40" Margin="20,0,0,0" VerticalAlignment="Center"
+                                ToolTip="Supprimer les applications préinstallées indésirables"/>
                     </Grid>
                 </Border>
 
@@ -399,7 +546,7 @@
         </ScrollViewer>
 
         <!-- PIED DE PAGE -->
-        <Border Grid.Row="2" Background="#0D0D1A" BorderBrush="#2A2A3E" BorderThickness="0,1,0,0" Padding="24,10">
+        <Border Grid.Row="2" Background="#0D0D1A" BorderBrush="#2A2A3E" BorderThickness="0,1,0,0" Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -407,15 +554,29 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse Width="7" Height="7" Fill="#4EC98C" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                    <TextBlock x:Name="TxtAdminStatus" Text="Admin"
-                               Foreground="#4EC98C" FontSize="11" VerticalAlignment="Center"/>
+                    <Border Background="#1A3A1A" CornerRadius="4" Padding="8,4" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="#4EC98C" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="TxtAdminStatus" Text="Admin"
+                                       Foreground="#4EC98C" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#1A1A3A" CornerRadius="4" Padding="8,4">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🧹 " FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="PC Clean v0.4.0" Foreground="#6BBBFF" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
                 <TextBlock x:Name="TxtLastCleanup" Grid.Column="1"
-                           Foreground="#444466" FontSize="11" VerticalAlignment="Center"
-                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Grid.Column="2" Text="PC Clean  v0.1.0-beta"
-                           Foreground="#333355" FontSize="11" VerticalAlignment="Center"/>
+                           Foreground="#555577" FontSize="11" VerticalAlignment="Center"
+                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⌨️ " FontSize="11" Foreground="#666688" Margin="0,0,4,0"/>
+                    <TextBlock x:Name="TxtShortcuts" Text="Raccourcis : F5 • Ctrl+1/2/3 • Ctrl+R/S/U" 
+                               Foreground="#666688" FontSize="10" VerticalAlignment="Center"
+                               ToolTip="F5=Actualiser, Ctrl+1=Quick, Ctrl+2=Gaming, Ctrl+3=Deep, Ctrl+R=Rapports, Ctrl+S=Paramètres, Ctrl+U=Updates"/>
+                </StackPanel>
             </Grid>
         </Border>
 

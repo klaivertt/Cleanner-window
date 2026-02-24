@@ -45,6 +45,15 @@ namespace NettoyerPc.Core
         /// <summary>Ignore les étapes des apps désactivées (gain de temps + rapport précis)</summary>
         public bool SkipDisabledApps { get; set; } = true;
 
+        /// <summary>Mode verbeux : affiche tous les détails dans les rapports</summary>
+        public bool VerboseMode { get; set; } = false;
+
+        /// <summary>Affiche un résumé avant de démarrer le nettoyage</summary>
+        public bool ShowPreCleanSummary { get; set; } = true;
+
+        /// <summary>Joue un son à la fin du nettoyage</summary>
+        public bool PlaySoundOnComplete { get; set; } = true;
+
         private static Dictionary<string, bool> DefaultEnabledApps() => new()
         {
             // Navigateurs
