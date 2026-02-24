@@ -125,8 +125,8 @@ namespace NettoyerPc.Modules
 
         private void ScanDirectory(string path, string targetFolder, CleaningStep step, int depth = 0)
         {
-            if (depth > 10) return; // Limiter la profondeur
-            if (IsProtectedPath(path)) return; // Protéger les chemins système
+            if (depth > 10) return;
+            if (IsProtectedPath(path)) return;
 
             try
             {
@@ -139,9 +139,12 @@ namespace NettoyerPc.Modules
                         try
                         {
                             var dirInfo = new DirectoryInfo(dir);
-                            step.SpaceFreed += GetDirectorySize(dirInfo);
+                            int fc = 0;
+                            foreach (var f in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                                try { step.SpaceFreed += f.Length; fc++; } catch { }
                             Directory.Delete(dir, true);
-                            step.FilesDeleted++;
+                            step.FilesDeleted += Math.Max(1, fc);
+                            step.AddLog($"Supprimé {dir} ({fc} fichier(s))");
                         }
                         catch { }
                     }
@@ -156,52 +159,95 @@ namespace NettoyerPc.Modules
 
         private void CleanGitLogs(CleaningStep step)
         {
+            step.AddLog("Scan de tous les dépôts Git sur les disques fixes...");
             foreach (var drive in DriveInfo.GetDrives())
             {
                 if (drive.IsReady && drive.DriveType == DriveType.Fixed)
-                {
                     FindAndCleanGitFolders(drive.RootDirectory.FullName, step);
-                }
             }
         }
 
         private void FindAndCleanGitFolders(string path, CleaningStep step, int depth = 0)
         {
             if (depth > 10) return;
+            if (IsProtectedPath(path)) return;
 
             try
             {
                 foreach (var dir in Directory.GetDirectories(path))
                 {
+                    if (IsProtectedPath(dir)) continue;
+
                     if (Path.GetFileName(dir) == ".git")
                     {
+                        var repoRoot = Directory.GetParent(dir)?.FullName ?? path;
+
+                        // 1. Supprimer les logs de reflog
                         var logsPath = Path.Combine(dir, "logs");
                         if (Directory.Exists(logsPath))
                         {
                             try
                             {
-                                foreach (var file in Directory.GetFiles(logsPath, "*", SearchOption.AllDirectories))
+                                foreach (var f in Directory.GetFiles(logsPath, "*", SearchOption.AllDirectories))
                                 {
-                                    try
-                                    {
-                                        var fileInfo = new FileInfo(file);
-                                        step.SpaceFreed += fileInfo.Length;
-                                        File.Delete(file);
-                                        step.FilesDeleted++;
-                                    }
+                                    try { step.SpaceFreed += new FileInfo(f).Length; File.Delete(f); step.FilesDeleted++; }
                                     catch { }
                                 }
+                                step.AddLog($"Logs Git effacés : {repoRoot}");
                             }
                             catch { }
                         }
+
+                        // 2. Supprimer les fichiers de merge/cherry-pick temporaires
+                        var tempRefs = new[] { "ORIG_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD" };
+                        foreach (var refFile in tempRefs)
+                        {
+                            var refPath = Path.Combine(dir, refFile);
+                            if (File.Exists(refPath))
+                                try { File.Delete(refPath); step.FilesDeleted++; step.AddLog($"Supprimé {refFile} dans {repoRoot}"); } catch { }
+                        }
+
+                        // 3. git gc --auto : compresse les objets, supprime les loose objects
+                        RunGitCommand(repoRoot, "gc --auto --quiet", step);
+
+                        // 4. git remote prune origin : nettoie les références distantes obsolètes
+                        RunGitCommand(repoRoot, "remote prune origin", step);
                     }
-                    else
+                    else if (Path.GetFileName(dir) != ".git")
                     {
                         FindAndCleanGitFolders(dir, step, depth + 1);
                     }
                 }
             }
             catch { }
+        }
+
+        /// <summary>Exécute une commande git dans un dépôt donné, loggue la sortie.</summary>
+        private void RunGitCommand(string repoRoot, string gitArgs, CleaningStep step)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "git",
+                    Arguments              = gitArgs,
+                    WorkingDirectory       = repoRoot,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true,
+                };
+                using var proc = Process.Start(psi);
+                if (proc == null) return;
+                var output = proc.StandardOutput.ReadToEnd();
+                var error  = proc.StandardError.ReadToEnd();
+                proc.WaitForExit(30_000);
+                if (!string.IsNullOrWhiteSpace(output))
+                    step.AddLog($"git {gitArgs}: {output.Trim()}");
+                if (!string.IsNullOrWhiteSpace(error) && proc.ExitCode != 0)
+                    step.AddLog($"git {gitArgs} stderr: {error.Trim()}");
+            }
+            catch { /* git non installé ou dépôt invalide — ignoré */ }
         }
 
         private void CleanVisualStudio(CleaningStep step)
@@ -501,9 +547,14 @@ namespace NettoyerPc.Modules
                 try
                 {
                     var dirInfo = new DirectoryInfo(path);
-                    step.SpaceFreed += GetDirectorySize(dirInfo);
+                    int fileCount = 0;
+                    foreach (var f in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                    {
+                        try { step.SpaceFreed += f.Length; fileCount++; } catch { }
+                    }
                     Directory.Delete(path, true);
-                    step.FilesDeleted++;
+                    step.FilesDeleted += Math.Max(1, fileCount);
+                    step.AddLog($"Supprimé : {path} ({fileCount} fichier(s))");
                 }
                 catch { }
             }

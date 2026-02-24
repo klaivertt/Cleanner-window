@@ -49,6 +49,7 @@ namespace NettoyerPc.Modules
 
         private void UpdateDefender(CleaningStep step)
         {
+            step.AddLog("Mise à jour des signatures Windows Defender...");
             try
             {
                 var defenderPath = Path.Combine(
@@ -56,31 +57,44 @@ namespace NettoyerPc.Modules
                     "Windows Defender",
                     "MpCmdRun.exe");
 
-                if (File.Exists(defenderPath))
+                if (!File.Exists(defenderPath))
                 {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = defenderPath,
-                        Arguments = "-SignatureUpdate",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
+                    step.AddLog("MpCmdRun.exe introuvable — Defender non installé ou chemin modifié");
+                    return;
+                }
 
-                    using var process = Process.Start(psi);
-                    if (process != null)
-                    {
-                        process.WaitForExit(120000); // 2 minutes timeout
-                        step.FilesDeleted = process.ExitCode == 0 ? 1 : 0;
-                    }
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = defenderPath,
+                    Arguments              = "-SignatureUpdate",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit(120000);
+                    if (!string.IsNullOrWhiteSpace(output))
+                        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                            if (line.Trim().Length > 2) step.AddLog(line.TrimEnd());
+                    step.AddLog(process.ExitCode == 0
+                        ? "✔ Signatures mises à jour avec succès"
+                        : $"⚠ Mise à jour terminée (code {process.ExitCode})");
+                    step.Status = process.ExitCode == 0 ? "Signatures à jour" : "Mise à jour échouée";
+                    // Cette étape ne supprime PAS de fichiers — on ne touche pas à FilesDeleted
                 }
             }
-            catch { }
+            catch (Exception ex) { step.AddLog($"Erreur : {ex.Message}"); }
         }
 
         private void ScanDefender(CleaningStep step, bool quick)
         {
+            var scanLabel = quick ? "rapide" : "complet";
+            step.AddLog($"Lancement du scan antivirus {scanLabel}...");
             try
             {
                 var defenderPath = Path.Combine(
@@ -88,37 +102,50 @@ namespace NettoyerPc.Modules
                     "Windows Defender",
                     "MpCmdRun.exe");
 
-                if (File.Exists(defenderPath))
+                if (!File.Exists(defenderPath))
                 {
-                    var scanType = quick ? "1" : "2"; // 1=quick, 2=full
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = defenderPath,
-                        Arguments = $"-Scan -ScanType {scanType}",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
+                    step.AddLog("MpCmdRun.exe introuvable");
+                    return;
+                }
 
-                    using var process = Process.Start(psi);
-                    if (process != null)
+                var scanType = quick ? "1" : "2";
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = defenderPath,
+                    Arguments              = $"-Scan -ScanType {scanType}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var timeout = quick ? 600000 : 3600000;
+                    var output  = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit(timeout);
+                    if (!string.IsNullOrWhiteSpace(output))
+                        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                            if (line.Trim().Length > 2) step.AddLog(line.TrimEnd());
+
+                    if (process.ExitCode == 0)
                     {
-                        var timeout = quick ? 600000 : 3600000; // 10 min ou 1h
-                        process.WaitForExit(timeout);
-                        
-                        if (process.ExitCode == 0)
-                        {
-                            step.FilesDeleted = 0; // Aucune menace
-                        }
-                        else if (process.ExitCode == 2)
-                        {
-                            step.FilesDeleted = 1; // Menaces détectées
-                        }
+                        step.AddLog("✔ Aucune menace détectée");
+                        step.Status = "Scan terminé — système propre";
+                    }
+                    else if (process.ExitCode == 2)
+                    {
+                        step.AddLog("⚠ Menace(s) détectée(s) ! Vérifiez le Centre de sécurité.");
+                        step.Status = "Menace(s) détectée(s) — action requise";
+                    }
+                    else
+                    {
+                        step.AddLog($"Scan terminé (code {process.ExitCode})");
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { step.AddLog($"Erreur : {ex.Message}"); }
         }
     }
 }

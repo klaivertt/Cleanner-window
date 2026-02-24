@@ -15,6 +15,8 @@ namespace NettoyerPc
 {
     public partial class MainForm : Window
     {
+        private Core.UpdateManager.UpdateInfo? _pendingUpdate;
+
         public MainForm()
         {
             InitializeComponent();
@@ -35,8 +37,57 @@ namespace NettoyerPc
                 Core.Localizer.SetLanguage(prefs.Language);
                 ApplyLanguage();
                 LoadLastReportStats();
+                _ = CheckUpdateSilentAsync();
             };
         }
+
+        /// <summary>Vérifie les mises à jour en arrière-plan et affiche le bandeau si disponible.</summary>
+        private async System.Threading.Tasks.Task CheckUpdateSilentAsync()
+        {
+            try
+            {
+                _pendingUpdate = await Core.UpdateManager.CheckForUpdatesAsync();
+                if (_pendingUpdate == null) return;
+
+                Dispatcher.Invoke(() =>
+                {
+                    var L = Core.Localizer.T;
+                    var isPreRel = _pendingUpdate.IsPreRelease;
+                    TxtBannerTitle.Text = isPreRel
+                        ? L("update.banner.title.prerelease").Replace("{0}", _pendingUpdate.Version.ToString())
+                        : L("update.banner.title.stable").Replace("{0}", _pendingUpdate.Version.ToString());
+                    TxtBannerBody.Text = L("update.banner.published").Replace("{0}", _pendingUpdate.PublishedAt.ToString("dd/MM/yyyy")) +
+                        (isPreRel ? L("update.banner.prerelease.warn") : "");
+                    UpdateBanner.Visibility = Visibility.Visible;
+                });
+            }
+            catch { /* silencieux */ }
+        }
+
+        private async void BtnBannerInstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (_pendingUpdate == null) return;
+            BtnBannerInstall.IsEnabled = false;
+            TxtBannerBody.Text = Core.Localizer.T("update.banner.downloading");
+
+            var ok = await Core.UpdateManager.DownloadAndInstallAsync(_pendingUpdate,
+                pct => Dispatcher.Invoke(() => TxtBannerBody.Text = Core.Localizer.T("update.banner.progress").Replace("{0}", pct.ToString())));
+
+            if (ok)
+            {
+                MessageBox.Show(Core.Localizer.T("update.install.ok.body"),
+                    Core.Localizer.T("update.install.ok.title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                Application.Current.Shutdown();
+            }
+            else
+            {
+                TxtBannerBody.Text = Core.Localizer.T("update.banner.error");
+                BtnBannerInstall.IsEnabled = true;
+            }
+        }
+
+        private void BtnBannerDismiss_Click(object sender, RoutedEventArgs e)
+            => UpdateBanner.Visibility = Visibility.Collapsed;
 
         // ── Fenêtre borderless : chrome + état maximum ─────────────────────────────────
         private void Minimize_Click(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -182,6 +233,9 @@ namespace NettoyerPc
                 new Bold(new Run(L("card.bloat.warning"))) { Foreground = Clr("#FF9933") }
             });
             BtnBloatware.Content = L("btn.bloat");
+
+            // Update banner
+            BtnBannerInstall.Content = L("update.banner.install");
         }
 
         // ── Helpers Inline ─────────────────────────────────────────────────────

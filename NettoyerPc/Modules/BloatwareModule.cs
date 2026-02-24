@@ -79,18 +79,25 @@ namespace NettoyerPc.Modules
         {
             try
             {
+                step.AddLog("Inventaire des packages Appx installés...");
                 var ps = RunPS("Get-AppxPackage | Select-Object -ExpandProperty Name");
                 if (!string.IsNullOrEmpty(ps))
                 {
                     var installed = ps.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                     int found = 0;
-                    foreach (var (_, pkg) in AppxBloatware)
+                    foreach (var (display, pkg) in AppxBloatware)
                     {
                         if (installed.Any(i => i.Trim().Contains(pkg, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            step.AddLog($"  ⚠ Détecté : {display} ({pkg})");
                             found++;
+                        }
                     }
-                    step.Status = $"{found} bloatwares détectés";
-                    step.FilesDeleted = found;
+                    // Afficher le décompte dans le statut, SANS l'ajouter à FilesDeleted
+                    step.Status = $"{found} bloatware(s) détecté(s)";
+                    step.AddLog(found > 0
+                        ? $"✔ {found} bloatware(s) reporé(s) pour suppression"
+                        : "✅ Aucun bloatware connu détecté");
                 }
             }
             catch { }
@@ -102,11 +109,26 @@ namespace NettoyerPc.Modules
             {
                 try
                 {
-                    RunPS($"Get-AppxPackage *{kw}* | Remove-AppxPackage -ErrorAction SilentlyContinue");
-                    RunPS($"Get-AppxProvisionedPackage -Online | Where-Object {{$_.DisplayName -like \"*{kw}*\"}} | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue");
-                    step.FilesDeleted++;
+                    // Vérifier si le package est installé avant de compter
+                    var found = RunPS($"Get-AppxPackage *{kw}* | Select-Object -ExpandProperty Name");
+                    if (!string.IsNullOrWhiteSpace(found))
+                    {
+                        var pkgLines = found.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var pkg in pkgLines)
+                            step.AddLog($"  Suppression : {pkg.Trim()}");
+                        RunPS($"Get-AppxPackage *{kw}* | Remove-AppxPackage -ErrorAction SilentlyContinue");
+                        RunPS($"Get-AppxProvisionedPackage -Online | Where-Object {{$_.DisplayName -like \"*{kw}*\"}} | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue");
+                        // Compter le nombre de packages réellement supprimés
+                        int removed = pkgLines.Length;
+                        step.FilesDeleted += removed;
+                        step.AddLog($"  ✔ {removed} package(s) supprimé(s) pour : {kw}");
+                    }
+                    else
+                    {
+                        step.AddLog($"  ∅ Non installé : {kw}");
+                    }
                 }
-                catch { }
+                catch (Exception ex) { step.AddLog($"  ✗ Erreur ({kw}) : {ex.Message}"); }
             }
         }
 
@@ -114,9 +136,11 @@ namespace NettoyerPc.Modules
         {
             try
             {
+                step.AddLog("Désactivation service DiagTrack (télémétrie Windows)...");
                 // Désactiver DiagTrack
                 RunCommand("sc", "config DiagTrack start= disabled");
                 RunCommand("sc", "stop DiagTrack");
+                step.AddLog("Désactivation service dmwappushsvc...");
                 // Désactiver dmwappushsvc
                 RunCommand("sc", "config dmwappushsvc start= disabled");
                 RunCommand("sc", "stop dmwappushsvc");
@@ -128,15 +152,27 @@ namespace NettoyerPc.Modules
                     "0.0.0.0 vortex.data.microsoft.com",
                     "0.0.0.0 settings-win.data.microsoft.com",
                 };
+                step.AddLog($"Mise à jour de {hostsPath} pour bloquer les serveurs de télémétrie...");
                 var currentHosts = System.IO.File.ReadAllText(hostsPath);
+                int addedEntries = 0;
                 foreach (var entry in entries)
                 {
                     if (!currentHosts.Contains(entry))
+                    {
                         System.IO.File.AppendAllText(hostsPath, "\n" + entry);
+                        step.AddLog($"  + {entry}");
+                        addedEntries++;
+                    }
+                    else
+                    {
+                        step.AddLog($"  ✓ Déjà présent : {entry}");
+                    }
                 }
-                step.FilesDeleted++;
+                step.AddLog($"✔ Télémétrie désactivée — {addedEntries} entrée(s) ajoutées au fichier hosts");
+                // Pas de FilesDeleted : modifier hosts n'est pas une suppression de fichier
+                step.Status = "Télémétrie désactivée";
             }
-            catch { }
+            catch (Exception ex) { step.AddLog($"Erreur télémétrie : {ex.Message}"); }
         }
 
         private string RunPS(string script)

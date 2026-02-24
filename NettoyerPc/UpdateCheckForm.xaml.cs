@@ -33,34 +33,31 @@ namespace NettoyerPc
             TxtErrorTitle.Text      = L("update.error.title");
             BtnInstall.Content      = L("update.btn.install");
             BtnClose.Content        = L("btn.close");
+            ChkPreRelease.Content   = L("update.prerelease.checkbox");
+            TxtPreReleaseBadge.Text = L("update.prerelease.badge");
         }
 
         private async void CheckForUpdatesAsync()
         {
+            // Réinitialiser l'UI
+            VerifyingPanel.Visibility       = Visibility.Visible;
+            UpToDatePanel.Visibility        = Visibility.Collapsed;
+            UpdateAvailablePanel.Visibility = Visibility.Collapsed;
+            ErrorPanel.Visibility           = Visibility.Collapsed;
+            BtnInstall.Visibility           = Visibility.Collapsed;
+
+            bool includePreRelease = ChkPreRelease.IsChecked == true;
+
             try
             {
                 TxtCurrentVer.Text = UpdateManager.CurrentVersion.ToString();
 
-                var progress = new Action<string>(msg =>
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        // Could add status message if needed
-                    });
-                });
-
-                _updateInfo = await UpdateManager.CheckForUpdatesAsync(progress);
+                _updateInfo = await UpdateManager.CheckForUpdatesAsync(null, includePreRelease);
 
                 Dispatcher.Invoke(() =>
                 {
-                    if (_updateInfo == null)
-                    {
-                        ShowUpToDate();
-                    }
-                    else
-                    {
-                        ShowUpdateAvailable();
-                    }
+                    if (_updateInfo == null) ShowUpToDate();
+                    else                     ShowUpdateAvailable();
                 });
             }
             catch (Exception ex)
@@ -68,6 +65,10 @@ namespace NettoyerPc
                 Dispatcher.Invoke(() => ShowError(ex.Message));
             }
         }
+
+        /// <summary>Relance la vérification quand l'option pre-release change.</summary>
+        private void ChkPreRelease_Changed(object sender, System.Windows.RoutedEventArgs e)
+            => CheckForUpdatesAsync();
 
         private void ShowUpToDate()
         {
@@ -92,6 +93,17 @@ namespace NettoyerPc
                 TxtChangelog.Text = _updateInfo.ChangeLog.Length > 0
                     ? _updateInfo.ChangeLog
                     : Core.Localizer.T("update.changelog.none");
+
+                // Afficher le badge pre-release si applicable
+                PreReleaseBadge.Visibility = _updateInfo.IsPreRelease
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+                // Date de publication
+                string date = _updateInfo.PublishedAt.ToString("dd/MM/yyyy");
+                TxtAvailableTitle.Text = _updateInfo.IsPreRelease
+                    ? Core.Localizer.T("update.available.prerelease").Replace("{0}", date)
+                    : Core.Localizer.T("update.available.withdate").Replace("{0}", date);
             }
         }
 

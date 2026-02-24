@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,22 +64,18 @@ namespace NettoyerPc.Modules
 
         private void CleanSteam(CleaningStep step)
         {
-            // Steam principal
+            KillProcess(new[] { "steam", "steamservice", "steamwebhelper" }, step);
             var steamPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam");
-            
             DeleteDirectoryIfExists(Path.Combine(steamPath, "logs"), step);
             DeleteDirectoryIfExists(Path.Combine(steamPath, "appcache"), step);
             DeleteDirectoryIfExists(Path.Combine(steamPath, "dumps"), step);
             DeleteDirectoryIfExists(Path.Combine(steamPath, "steamapps", "shadercache"), step);
-
-            // SteamLibrary sur tous les disques
             foreach (var drive in DriveInfo.GetDrives())
             {
                 if (drive.IsReady && drive.DriveType == DriveType.Fixed)
                 {
                     var steamLibPath = Path.Combine(drive.RootDirectory.FullName, "SteamLibrary");
                     DeleteDirectoryIfExists(Path.Combine(steamLibPath, "steamapps", "shadercache"), step);
-                    
                     var steamAppsPath = Path.Combine(drive.RootDirectory.FullName, "steamapps");
                     DeleteDirectoryIfExists(Path.Combine(steamAppsPath, "shadercache"), step);
                 }
@@ -96,13 +93,10 @@ namespace NettoyerPc.Modules
 
         private void CleanGamingPlatforms(CleaningStep step)
         {
+            KillProcess(new[] { "EpicGamesLauncher", "EpicWebHelper", "Battle.net", "Battle.net.exe" }, step);
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            
-            // Epic Games
+            var appData      = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             DeleteDirectoryIfExists(Path.Combine(localAppData, "EpicGamesLauncher", "Saved", "webcache"), step);
-            
-            // Battle.net
             DeleteDirectoryIfExists(Path.Combine(appData, "Battle.net", "Cache"), step);
         }
 
@@ -113,12 +107,27 @@ namespace NettoyerPc.Modules
                 try
                 {
                     var dirInfo = new DirectoryInfo(path);
-                    step.SpaceFreed += GetDirectorySize(dirInfo);
+                    int fileCount = 0;
+                    foreach (var f in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                    {
+                        try { step.SpaceFreed += f.Length; fileCount++; } catch { }
+                    }
                     Directory.Delete(path, true);
-                    step.FilesDeleted++;
+                    step.FilesDeleted += Math.Max(1, fileCount);
+                    step.AddLog($"Supprimé : {path} ({fileCount} fichier(s))");
                 }
                 catch { }
             }
+        }
+
+        /// <summary>Tue les processus donnés avant le nettoyage pour libérer les fichiers.</summary>
+        private static void KillProcess(string[] names, CleaningStep step)
+        {
+            bool killed = false;
+            foreach (var name in names)
+                foreach (var p in Process.GetProcessesByName(name))
+                    try { p.Kill(entireProcessTree: true); p.WaitForExit(3000); step.AddLog($"Fermé : {p.ProcessName}.exe"); killed = true; } catch { }
+            if (killed) Thread.Sleep(500);
         }
 
         private long GetDirectorySize(DirectoryInfo dirInfo)
@@ -138,6 +147,7 @@ namespace NettoyerPc.Modules
 
         private void CleanEAApp(CleaningStep step)
         {
+            KillProcess(new[] { "EADesktop", "EABackgroundService", "Origin", "OriginWebHelperService" }, step);
             var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             DeleteDirectoryIfExists(Path.Combine(local, "Electronic Arts", "EA Desktop", "Cache"), step);
@@ -148,6 +158,7 @@ namespace NettoyerPc.Modules
 
         private void CleanUbisoft(CleaningStep step)
         {
+            KillProcess(new[] { "upc", "UbisoftGameLauncher", "UbisoftGameLauncher64" }, step);
             var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DeleteDirectoryIfExists(Path.Combine(local, "Ubisoft Game Launcher", "cache"),    step);
             DeleteDirectoryIfExists(Path.Combine(local, "Ubisoft Game Launcher", "webcache"), step);

@@ -6,15 +6,20 @@
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
-		<Version>0.2.1-beta</Version>
-		<AssemblyVersion>0.2.1.0</AssemblyVersion>
-		<FileVersion>0.2.1.0</FileVersion>
+		<Version>0.3.1-beta</Version>
+		<AssemblyVersion>0.3.1.0</AssemblyVersion>
+		<FileVersion>0.3.1.0</FileVersion>
 		<Product>PC Clean</Product>
 		<Company>Klaivert</Company>
+		<ApplicationIcon>Resources\icon.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Resource Include="Resources\icon.ico" />
 	</ItemGroup>
 
 	<!-- Copy Languages/ folder alongside the exe so external translations work -->

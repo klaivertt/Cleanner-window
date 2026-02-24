@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -172,34 +173,87 @@ namespace NettoyerPc.Modules
 
         private void CleanDiscord(CleaningStep step)
         {
+            // Fermer Discord proprement avant de toucher aux caches
+            KillProcess(new[] { "Discord", "DiscordPTB", "DiscordCanary" }, step);
+
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var roaming = Path.Combine(appData, "discord");
-            DeleteDir(Path.Combine(roaming, "Cache"), step);
-            DeleteDir(Path.Combine(roaming, "Code Cache"), step);
-            DeleteDir(Path.Combine(roaming, "GPUCache"), step);
+            ClearDirContents(Path.Combine(roaming, "Cache"), step);
+            ClearDirContents(Path.Combine(roaming, "Code Cache"), step);
+            ClearDirContents(Path.Combine(roaming, "GPUCache"), step);
+        }
+
+        /// <summary>Tue les processus dont le nom figure dans <paramref name="names"/> avant nettoyage.
+        /// Attend 600 ms pour que les fichiers soient libérés.</summary>
+        private static void KillProcess(string[] names, CleaningStep step)
+        {
+            bool killed = false;
+            foreach (var name in names)
+            {
+                foreach (var p in Process.GetProcessesByName(name))
+                {
+                    try
+                    {
+                        p.Kill(entireProcessTree: true);
+                        p.WaitForExit(3000);
+                        step.AddLog($"Fermé : {p.ProcessName}.exe");
+                        killed = true;
+                    }
+                    catch { }
+                }
+            }
+            if (killed) System.Threading.Thread.Sleep(600);
+        }
+
+        /// <summary>Supprime tous les FICHIERS d'un dossier (et ses sous-dossiers)
+        /// sans supprimer le dossier lui-même — évite les crashs d'applis Electron.</summary>
+        private void ClearDirContents(string path, CleaningStep step)
+        {
+            if (!Directory.Exists(path)) return;
+            try
+            {
+                foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        var fi = new FileInfo(file);
+                        step.SpaceFreed += fi.Length;
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                        step.FilesDeleted++;
+                    }
+                    catch { }
+                }
+                foreach (var dir in Directory.GetDirectories(path))
+                    try { Directory.Delete(dir, true); } catch { }
+                step.AddLog($"Cache vidé : {path}");
+            }
+            catch { }
         }
 
         private void CleanSpotify(CleaningStep step)
         {
-            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            KillProcess(new[] { "Spotify" }, step);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             DeleteDir(Path.Combine(appData, "Spotify", "Storage"), step);
-            DeleteDir(Path.Combine(local, "Spotify", "Storage"), step);
+            DeleteDir(Path.Combine(local,   "Spotify", "Storage"), step);
         }
 
         private void CleanTeams(CleaningStep step)
         {
+            KillProcess(new[] { "Teams", "ms-teams" }, step);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DeleteDir(Path.Combine(appData, "Microsoft", "Teams", "Cache"), step);
             DeleteDir(Path.Combine(appData, "Microsoft", "Teams", "GPUCache"), step);
             DeleteDir(Path.Combine(appData, "Microsoft", "Teams", "Service Worker", "CacheStorage"), step);
-            // New Teams
             DeleteDir(Path.Combine(local, "Packages", "MSTeams_8wekyb3d8bbwe", "LocalCache"), step);
         }
 
         private void CleanSlack(CleaningStep step)
         {
+            KillProcess(new[] { "slack" }, step);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             DeleteDir(Path.Combine(appData, "Slack", "Cache"), step);
             DeleteDir(Path.Combine(appData, "Slack", "Code Cache"), step);
@@ -207,13 +261,14 @@ namespace NettoyerPc.Modules
 
         private void CleanOBS(CleaningStep step)
         {
+            KillProcess(new[] { "obs64", "obs32", "obs" }, step);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var obsLogs = Path.Combine(appData, "obs-studio", "logs");
             if (Directory.Exists(obsLogs))
             {
                 foreach (var file in Directory.GetFiles(obsLogs, "*.txt"))
                 {
-                    try { var fi = new FileInfo(file); step.SpaceFreed += fi.Length; File.Delete(file); step.FilesDeleted++; }
+                    try { var fi = new FileInfo(file); step.SpaceFreed += fi.Length; File.Delete(file); step.FilesDeleted++; step.AddLog($"OBS log supprimé : {Path.GetFileName(file)}"); }
                     catch { }
                 }
             }
@@ -222,12 +277,12 @@ namespace NettoyerPc.Modules
 
         private void CleanSteam(CleaningStep step)
         {
+            KillProcess(new[] { "steam", "steamservice" }, step);
             var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             var steamPath = Path.Combine(programFilesX86, "Steam");
             DeleteDir(Path.Combine(steamPath, "logs"), step);
             DeleteDir(Path.Combine(steamPath, "dumps"), step);
             DeleteDir(Path.Combine(steamPath, "appcache", "httpcache"), step);
-            // Shader cache sur tous les disques
             foreach (var drive in DriveInfo.GetDrives())
             {
                 if (!drive.IsReady || drive.DriveType != DriveType.Fixed) continue;
@@ -240,6 +295,7 @@ namespace NettoyerPc.Modules
 
         private void CleanEpic(CleaningStep step)
         {
+            KillProcess(new[] { "EpicGamesLauncher", "EpicWebHelper" }, step);
             var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DeleteDir(Path.Combine(local, "EpicGamesLauncher", "Saved", "Logs"), step);
             DeleteDir(Path.Combine(local, "EpicGamesLauncher", "Saved", "webcache"), step);
@@ -257,9 +313,19 @@ namespace NettoyerPc.Modules
             try
             {
                 var info = new DirectoryInfo(path);
-                step.SpaceFreed += GetDirSize(info);
+                int fileCount = 0;
+                try
+                {
+                    foreach (var f in info.GetFiles("*", SearchOption.AllDirectories))
+                    {
+                        step.SpaceFreed += f.Length;
+                        fileCount++;
+                    }
+                }
+                catch { step.SpaceFreed += GetDirSize(info); }
                 Directory.Delete(path, true);
-                step.FilesDeleted++;
+                step.FilesDeleted += Math.Max(1, fileCount);
+                step.AddLog($"Supprimé : {path} ({fileCount} fichier(s))");
             }
             catch { }
         }
@@ -274,6 +340,7 @@ namespace NettoyerPc.Modules
 
         private void CleanZoom(CleaningStep step)
         {
+            KillProcess(new[] { "Zoom", "ZoomIt" }, step);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DeleteDir(Path.Combine(appData, "Zoom", "logs"), step);
@@ -287,17 +354,18 @@ namespace NettoyerPc.Modules
 
         private void CleanWhatsApp(CleaningStep step)
         {
+            KillProcess(new[] { "WhatsApp" }, step);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var local   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             DeleteDir(Path.Combine(appData, "WhatsApp", "Cache"),       step);
             DeleteDir(Path.Combine(appData, "WhatsApp", "Code Cache"),  step);
             DeleteDir(Path.Combine(appData, "WhatsApp", "GPUCache"),    step);
-            // WhatsApp UWP
             DeleteDir(Path.Combine(local, "Packages", "5319275A.WhatsAppDesktop_cv1g1gvanyjgm", "LocalCache"), step);
         }
 
         private void CleanTelegram(CleaningStep step)
         {
+            KillProcess(new[] { "Telegram", "Updater" }, step);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var tdata = Path.Combine(appData, "Telegram Desktop", "tdata");
             DeleteDir(Path.Combine(tdata, "emoji"),                step);

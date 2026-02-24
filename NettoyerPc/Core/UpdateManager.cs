@@ -14,10 +14,15 @@ namespace NettoyerPc.Core
         public static readonly Version CurrentVersion = AppConstants.VersionNumber;
 
         /// <summary>Infos sur une version disponible depuis GitHub.</summary>
-        public record UpdateInfo(Version Version, string DownloadUrl, string ChangeLog, DateTime PublishedAt);
+        public record UpdateInfo(Version Version, string DownloadUrl, string ChangeLog, DateTime PublishedAt, bool IsPreRelease = false);
 
-        /// <summary>Récupère les infos de mise à jour depuis GitHub.</summary>
-        public static async Task<UpdateInfo?> CheckForUpdatesAsync(Action<string>? progress = null)
+        /// <summary>
+        /// Récupère les infos de mise à jour depuis GitHub.
+        /// <paramref name="includePreRelease"/> = true → cherche aussi les pre-releases.
+        /// </summary>
+        public static async Task<UpdateInfo?> CheckForUpdatesAsync(
+            Action<string>? progress         = null,
+            bool            includePreRelease = false)
         {
             try
             {
@@ -26,20 +31,32 @@ namespace NettoyerPc.Core
                 using var client = new HttpClient();
                 client.DefaultRequestHeaders.Add("User-Agent", $"{AppConstants.AppName}/{AppConstants.AppVersion}");
 
-                var response = await client.GetAsync(AppConstants.GitHubApiUrl);
-                if (!response.IsSuccessStatusCode)
+                JsonElement root;
+
+                if (includePreRelease)
                 {
-                    progress?.Invoke("Erreur : impossible de contacter GitHub");
-                    return null;
+                    // Récupère toutes les releases (pre-releases incluses)
+                    var resp = await client.GetAsync(AppConstants.GitHubApiAllReleasesUrl);
+                    if (!resp.IsSuccessStatusCode) { progress?.Invoke("Erreur GitHub"); return null; }
+                    var jsonArr = await resp.Content.ReadAsStringAsync();
+                    using var docArr = JsonDocument.Parse(jsonArr);
+                    var arr = docArr.RootElement;
+                    if (arr.GetArrayLength() == 0) { progress?.Invoke("Aucune release trouvée"); return null; }
+                    // Prendre la 1re release (la plus récente, triée par GitHub)
+                    root = arr[0].Clone();
+                }
+                else
+                {
+                    var resp = await client.GetAsync(AppConstants.GitHubApiUrl);
+                    if (!resp.IsSuccessStatusCode) { progress?.Invoke("Erreur : impossible de contacter GitHub"); return null; }
+                    var json = await resp.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    root = doc.RootElement.Clone();
                 }
 
-                var json = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                // Récupérer le tag version (ex: "v0.2.0")
-                var tagName = root.GetProperty("tag_name").GetString() ?? "v0.0.0";
-                var tag = ParseVersionTag(tagName);
+                var tagName    = root.GetProperty("tag_name").GetString() ?? "v0.0.0";
+                var tag        = ParseVersionTag(tagName);
+                var isPreRel   = root.TryGetProperty("prerelease", out var preProp) && preProp.GetBoolean();
 
                 if (tag == null || CompareVersions(tag, CurrentVersion) <= 0)
                 {
@@ -47,7 +64,7 @@ namespace NettoyerPc.Core
                     return null;
                 }
 
-                // Chercher l'asset ZIP (ex: "PC.Clean.V-0.2.0-Beta.zip")
+                // Chercher l'asset ZIP
                 var assetsEl = root.GetProperty("assets");
                 string? zipUrl = null;
                 foreach (var assetEl in assetsEl.EnumerateArray())
@@ -60,17 +77,13 @@ namespace NettoyerPc.Core
                     }
                 }
 
-                if (zipUrl == null)
-                {
-                    progress?.Invoke("Aucun fichier ZIP trouvé dans la release");
-                    return null;
-                }
+                if (zipUrl == null) { progress?.Invoke("Aucun fichier ZIP trouvé dans la release"); return null; }
 
-                var changelog = root.GetProperty("body").GetString() ?? "";
+                var changelog   = root.GetProperty("body").GetString() ?? "";
                 var publishedAt = root.GetProperty("published_at").GetDateTime();
 
-                progress?.Invoke($"Nouvelle version disponible : {tag}");
-                return new UpdateInfo(tag, zipUrl, changelog, publishedAt);
+                progress?.Invoke($"Nouvelle version disponible : {tag}{(isPreRel ? " (pre-release)" : "")}");
+                return new UpdateInfo(tag, zipUrl, changelog, publishedAt, isPreRel);
             }
             catch (Exception ex)
             {

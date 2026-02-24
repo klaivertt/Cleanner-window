@@ -230,7 +230,11 @@ namespace NettoyerPc.Modules
                         // /force supprime le package du store sans désinstaller le driver actif
                         var r = RunProcess("pnputil.exe", $"/delete-driver {list[i].InfName} /force", 30);
                         if (r != null && r.Contains("successfully", StringComparison.OrdinalIgnoreCase))
-                        { removed++; step.FilesDeleted++; }
+                        {
+                            removed++;
+                            step.FilesDeleted++;
+                            step.AddLog($"Supprimé : {list[i].InfName} — {list[i].DriverDescription} v{list[i].DriverVersion}");
+                        }
                     }
                 }
 
@@ -286,6 +290,9 @@ namespace NettoyerPc.Modules
                 sb.AppendLine("  Chipset  → Windows Update > Mises à jour facultatives");
 
                 step.Status = sb.ToString().TrimEnd();
+                // Emit rapport lines to activity log
+                foreach (var rapportLine in sb.ToString().Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+                    step.AddLog(rapportLine);
             }
             catch (Exception ex) { step.Status = $"Rapport partiel ({ex.Message})"; }
         }
@@ -329,9 +336,14 @@ namespace NettoyerPc.Modules
             try
             {
                 var info = new DirectoryInfo(path);
-                step.SpaceFreed += GetDirSize(info);
+                int fileCount = 0;
+                foreach (var f in info.GetFiles("*", SearchOption.AllDirectories))
+                {
+                    try { step.SpaceFreed += f.Length; fileCount++; } catch { }
+                }
                 Directory.Delete(path, true);
-                step.FilesDeleted++;
+                step.FilesDeleted += Math.Max(1, fileCount);
+                step.AddLog($"Supprimé : {path} ({fileCount} fichier(s))");
             }
             catch { }
         }
@@ -345,7 +357,14 @@ namespace NettoyerPc.Modules
 
         private static void SafeDeleteFile(string path, CleaningStep step)
         {
-            try { var fi = new FileInfo(path); step.SpaceFreed += fi.Length; File.Delete(path); step.FilesDeleted++; }
+            try
+            {
+                var fi = new FileInfo(path);
+                step.SpaceFreed += fi.Length;
+                File.Delete(path);
+                step.FilesDeleted++;
+                step.AddLog($"Supprimé : {Path.GetFileName(path)}");
+            }
             catch { }
         }
 

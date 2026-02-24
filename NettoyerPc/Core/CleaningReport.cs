@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Win32;
 
@@ -11,147 +10,154 @@ namespace NettoyerPc.Core
     public class CleaningReport
     {
         public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
+        public DateTime EndTime   { get; set; }
         public TimeSpan TotalDuration => EndTime - StartTime;
-        public int TotalFilesDeleted { get; set; }
-        public long TotalSpaceFreed { get; set; }
-        public int ThreatsFound { get; set; }
-        public List<CleaningStep> Steps { get; set; } = new();
-        public string MachineName { get; set; } = Environment.MachineName;
-        public string UserName { get; set; } = Environment.UserName;
-        public bool RebootRequired { get; set; }
-        public string OSVersion { get; set; } = GetOSVersion();
+
+        public int  TotalFilesDeleted { get; set; }
+        public long TotalSpaceFreed   { get; set; }
+        public int  ThreatsFound      { get; set; }
+
+        public List<CleaningStep> Steps     { get; set; } = new();
+        public string MachineName           { get; set; } = Environment.MachineName;
+        public string UserName              { get; set; } = Environment.UserName;
+        public bool   RebootRequired        { get; set; }
+        public string OSVersion             { get; set; } = GetOSVersion();
+
         public int SuccessfulSteps => Steps.Count(s => s.IsCompleted && !s.HasError);
-        public int FailedSteps => Steps.Count(s => s.HasError);
+        public int FailedSteps     => Steps.Count(s => s.HasError);
+
         public List<string> DeletedFilePaths { get; set; } = new();
-        public List<string> SkippedSteps { get; set; } = new();
+        public List<string> SkippedSteps     { get; set; } = new();
 
-        public string GenerateReport()
+        // ── Nouvelles propriétés ─────────────────────────────────────────────────
+        /// <summary>Benchmark disque mesuré AVANT le nettoyage.</summary>
+        public DiskBenchmark?    BenchmarkBefore  { get; set; }
+        /// <summary>Benchmark disque mesuré APRÈS le nettoyage.</summary>
+        public DiskBenchmark?    BenchmarkAfter   { get; set; }
+        /// <summary>Score de performance calculé à la fin du nettoyage.</summary>
+        public PerformanceScore? Score            { get; set; }
+        /// <summary>Mode de nettoyage exécuté.</summary>
+        public string CleaningMode               { get; set; } = "";
+
+        /// <summary>
+        /// Génère et sauvegarde le rapport complet au format JSON.
+        /// Le fichier est nommé CleanerReport_yyyy-MM-dd_HH-mm-ss.json.
+        /// </summary>
+        public string SaveReportJson(string directory)
         {
-            var L = Localizer.T;
-            var sb = new StringBuilder();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════════════════════════╗");
-            sb.AppendLine($"║   {(AppConstants.AppName + " v" + AppConstants.AppVersion).PadRight(79)}║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════════════════════════╝");
-            sb.AppendLine();
-
-            sb.AppendLine($"【 {L("report.txt.sysinfo")} 】");
-            sb.AppendLine($"  {L("report.txt.date")}    : {StartTime:dd/MM/yyyy}");
-            sb.AppendLine($"  {L("report.txt.timestart")}: {StartTime:HH:mm:ss}");
-            sb.AppendLine($"  {L("report.txt.timeend")}  : {EndTime:HH:mm:ss}");
-            sb.AppendLine($"  {L("report.txt.duration")} : {TotalDuration.Hours}h {TotalDuration.Minutes}m {TotalDuration.Seconds}s");
-            sb.AppendLine($"  {L("report.txt.user")}     : {UserName}");
-            sb.AppendLine($"  {L("report.txt.machine")}  : {MachineName}");
-            sb.AppendLine($"  {L("report.txt.os")}       : {OSVersion}");
-            sb.AppendLine();
-
-            sb.AppendLine($"【 {L("report.txt.summary")} 】");
-            sb.AppendLine($"  ✓  {L("report.txt.files")}      : {TotalFilesDeleted}");
-            sb.AppendLine($"  💾 {L("report.txt.space")}      : {FormatBytes(TotalSpaceFreed)}");
-            sb.AppendLine($"  ⚠️  {L("report.txt.threats")}     : {ThreatsFound}");
-            sb.AppendLine($"  ✅ {L("report.txt.steps.ok")}    : {SuccessfulSteps}/{Steps.Count}");
-            sb.AppendLine($"  ❌ {L("report.txt.steps.failed")}: {FailedSteps}/{Steps.Count}");
-            sb.AppendLine($"  ⏭️  {L("report.txt.skipped.label")}: {SkippedSteps.Count}");
-            sb.AppendLine($"  🔄 {L("report.txt.reboot.label")}: {(RebootRequired ? L("report.txt.reboot.yes.short") : L("report.txt.reboot.no.short"))}");
-            sb.AppendLine();
-
-            if (SkippedSteps.Count > 0)
-            {
-                sb.AppendLine($"【 {L("report.txt.skipped")} 】");
-                foreach (var s in SkippedSteps)
-                    sb.AppendLine($"  ⏭️  {s}");
-                sb.AppendLine();
-            }
-
-            sb.AppendLine($"【 {L("report.txt.stepdetails")} 】");
-            sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            
-            foreach (var step in Steps)
-            {
-                var statusSymbol = step.HasError ? "✗" : "✓";
-                sb.AppendLine();
-                sb.AppendLine($"  {statusSymbol} [{step.Category.ToUpper()}] {step.Name}");
-                sb.AppendLine($"      {L("report.txt.status")}     : {step.Status}");
-                sb.AppendLine($"      {L("report.txt.files")}      : {step.FilesDeleted}");
-                sb.AppendLine($"      {L("report.txt.space")}      : {FormatBytes(step.SpaceFreed)}");
-                sb.AppendLine($"      {L("report.txt.duration2")}  : {step.Duration.TotalSeconds:0.00}s");
-                if (step.HasError)
-                    sb.AppendLine($"      ⚠️  {L("report.txt.error")} : {step.ErrorMessage}");
-            }
-            
-            sb.AppendLine();
-            sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sb.AppendLine();
-            
-            if (DeletedFilePaths.Count > 0)
-            {
-                sb.AppendLine($"【 {L("report.txt.paths")} 】");
-                foreach (var path in DeletedFilePaths.Take(500))
-                    sb.AppendLine($"    • {path}");
-                if (DeletedFilePaths.Count > 500)
-                    sb.AppendLine($"    ... {L("report.txt.andmore").Replace("{0}", (DeletedFilePaths.Count - 500).ToString())}");
-                sb.AppendLine();
-            }
-            
-            sb.AppendLine($"【 {L("report.txt.reco")} 】");
-            if (RebootRequired)
-                sb.AppendLine($"  ⚠️  {L("report.txt.reco.reboot")}");
-            else
-                sb.AppendLine($"  ✓  {L("report.txt.reco.noreboot")}");
-            if (FailedSteps > 0)
-                sb.AppendLine($"  ⚠️  {L("report.txt.reco.errors").Replace("{0}", FailedSteps.ToString())}");
-            else
-                sb.AppendLine($"  ✓  {L("report.txt.reco.ok")}");
-
-            sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════════════════════════╗");
-            sb.AppendLine($"║   {L("report.txt.footer").PadRight(79)}║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════════════════════════╝");
-            
-            return sb.ToString();
+            Directory.CreateDirectory(directory);
+            var fileName = $"CleanerReport_{StartTime:yyyy-MM-dd_HH-mm-ss}.json";
+            var fullPath = Path.Combine(directory, fileName);
+            File.WriteAllText(fullPath, ToJsonString());
+            return fullPath;
         }
 
-        public void SaveReport(string directory)
+        /// <summary>Sérialise le rapport complet en JSON indenté.</summary>
+        public string ToJsonString()
         {
-            var fileName = $"CleanerReport_{StartTime:yyyy-MM-dd_HH-mm-ss}.txt";
-            File.WriteAllText(Path.Combine(directory, fileName), GenerateReport());
-        }
+            // ── Infos sysème ─────────────────────────────────────────────────────
+            var sysInfo = GetSystemInfo();
 
-        public void SaveReportJson(string directory)
-        {
-            // Grouper les étapes par catégorie pour le rapport
+            // ── Benchmark ────────────────────────────────────────────────────────
+            object? benchBefore = BenchmarkBefore == null ? null : new
+            {
+                success      = BenchmarkBefore.Success,
+                readMBs      = BenchmarkBefore.ReadSpeedMBs,
+                writeMBs     = BenchmarkBefore.WriteSpeedMBs,
+                measuredAt   = BenchmarkBefore.MeasuredAt,
+                error        = BenchmarkBefore.ErrorMessage
+            };
+            object? benchAfter = BenchmarkAfter == null ? null : new
+            {
+                success      = BenchmarkAfter.Success,
+                readMBs      = BenchmarkAfter.ReadSpeedMBs,
+                writeMBs     = BenchmarkAfter.WriteSpeedMBs,
+                measuredAt   = BenchmarkAfter.MeasuredAt,
+                error        = BenchmarkAfter.ErrorMessage
+            };
+            object? benchDelta = (BenchmarkBefore?.Success == true && BenchmarkAfter?.Success == true) ? new
+            {
+                readDeltaMBs   = Math.Round(BenchmarkAfter!.ReadSpeedMBs  - BenchmarkBefore!.ReadSpeedMBs,  1),
+                writeDeltaMBs  = Math.Round(BenchmarkAfter!.WriteSpeedMBs - BenchmarkBefore!.WriteSpeedMBs, 1),
+                readDeltaPct   = Math.Round((BenchmarkAfter!.ReadSpeedMBs  - BenchmarkBefore!.ReadSpeedMBs)  / Math.Max(BenchmarkBefore!.ReadSpeedMBs,  1) * 100, 1),
+                writeDeltaPct  = Math.Round((BenchmarkAfter!.WriteSpeedMBs - BenchmarkBefore!.WriteSpeedMBs) / Math.Max(BenchmarkBefore!.WriteSpeedMBs, 1) * 100, 1),
+                summary        = Score?.BenchmarkDelta ?? "Non mesuré"
+            } : null;
+
+            // ── Score ─────────────────────────────────────────────────────────────
+            object? scoreObj = Score == null ? null : new
+            {
+                value          = Score.Score,
+                grade          = Score.Grade,
+                message        = Score.Message,
+                benchmarkDelta = Score.BenchmarkDelta,
+                breakdown = new
+                {
+                    stepSuccess = Score.PtsStepSuccess,
+                    spaceFreed  = Score.PtsSpaceFreed,
+                    benchmark   = Score.PtsBenchmark,
+                    files       = Score.PtsFiles
+                }
+            };
+
+            // ── Résumé par catégorie ──────────────────────────────────────────────
             var byCategory = Steps
-                .GroupBy(s => s.Category)
+                .GroupBy(s => s.Category ?? "general")
+                .OrderByDescending(g => g.Sum(s => s.SpaceFreed))
                 .Select(g => new
                 {
-                    category            = g.Key,
-                    stepsCount          = g.Count(),
-                    successCount        = g.Count(s => !s.HasError),
-                    totalFilesDeleted   = g.Sum(s => s.FilesDeleted),
-                    totalSpaceFreedBytes = g.Sum(s => s.SpaceFreed),
-                    totalSpaceFormatted = FormatBytes(g.Sum(s => s.SpaceFreed)),
-                    durationSeconds     = g.Sum(s => s.Duration.TotalSeconds)
+                    category              = g.Key,
+                    stepsTotal            = g.Count(),
+                    stepsSuccess          = g.Count(s => !s.HasError),
+                    stepsFailed           = g.Count(s => s.HasError),
+                    totalFilesDeleted     = g.Sum(s => s.FilesDeleted),
+                    totalSpaceFreedBytes  = g.Sum(s => s.SpaceFreed),
+                    totalSpaceFormatted   = FormatBytes(g.Sum(s => s.SpaceFreed)),
+                    totalDurationSeconds  = Math.Round(g.Sum(s => s.Duration.TotalSeconds), 2)
                 }).ToList();
+
+            // ── Étapes détaillées ─────────────────────────────────────────────────
+            var steps = Steps.Select(s =>
+            {
+                List<string> logs;
+                lock (s.Logs) logs = s.Logs.ToList();
+                return new
+                {
+                    name                = s.Name,
+                    category            = s.Category ?? "general",
+                    status              = s.Status,
+                    durationSeconds     = Math.Round(s.Duration.TotalSeconds, 2),
+                    filesDeleted        = s.FilesDeleted,
+                    spaceFreedBytes     = s.SpaceFreed,
+                    spaceFreedFormatted = FormatBytes(s.SpaceFreed),
+                    hasError            = s.HasError,
+                    errorMessage        = s.ErrorMessage ?? "",
+                    logs                = logs
+                };
+            }).ToList();
 
             var dto = new
             {
-                reportVersion    = "3.0",
+                reportVersion = "4.0",
+
                 metadata = new
                 {
-                    generatedAt     = DateTime.Now,
-                    appName         = AppConstants.AppName,
-                    appVersion      = AppConstants.AppVersion,
-                    osVersion       = OSVersion,
-                    machineName     = MachineName,
-                    userName        = UserName
+                    generatedAt   = DateTime.Now,
+                    appName       = AppConstants.AppName,
+                    appVersion    = AppConstants.AppVersion,
+                    cleaningMode  = CleaningMode
                 },
+
+                system = sysInfo,
+
                 execution = new
                 {
-                    startTime           = StartTime,
-                    endTime             = EndTime,
-                    durationSeconds     = TotalDuration.TotalSeconds,
-                    durationFormatted   = $"{TotalDuration.Hours}h {TotalDuration.Minutes}m {TotalDuration.Seconds}s"
+                    startTime          = StartTime,
+                    endTime            = EndTime,
+                    durationSeconds    = Math.Round(TotalDuration.TotalSeconds, 1),
+                    durationFormatted  = $"{(int)TotalDuration.TotalHours}h {TotalDuration.Minutes:00}m {TotalDuration.Seconds:00}s"
                 },
+
                 summary = new
                 {
                     totalFilesDeleted        = TotalFilesDeleted,
@@ -161,29 +167,58 @@ namespace NettoyerPc.Core
                     executedSteps            = Steps.Count,
                     successfulSteps          = SuccessfulSteps,
                     failedSteps              = FailedSteps,
-                    skippedSteps             = SkippedSteps.Count,
+                    skippedStepsCount        = SkippedSteps.Count,
                     rebootRequired           = RebootRequired
                 },
-                byCategory = byCategory,
-                steps = Steps.Select(s => new
+
+                performanceScore = scoreObj,
+
+                diskBenchmark = new
                 {
-                    name                = s.Name,
-                    category            = s.Category,
-                    status              = s.Status,
-                    durationSeconds     = Math.Round(s.Duration.TotalSeconds, 2),
-                    filesDeleted        = s.FilesDeleted,
-                    spaceFreedBytes     = s.SpaceFreed,
-                    spaceFreedFormatted = FormatBytes(s.SpaceFreed),
-                    hasError            = s.HasError,
-                    errorMessage        = s.ErrorMessage ?? ""
-                }).ToList(),
+                    before = benchBefore,
+                    after  = benchAfter,
+                    delta  = benchDelta
+                },
+
+                byCategory   = byCategory,
+                steps        = steps,
                 skippedSteps = SkippedSteps,
-                deletedPaths = DeletedFilePaths.Take(500).ToList()
+                deletedPaths = DeletedFilePaths.Take(1000).ToList()
             };
 
-            var json = JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true });
-            var fileName = $"CleanerReport_{StartTime:yyyy-MM-dd_HH-mm-ss}.json";
-            File.WriteAllText(Path.Combine(directory, fileName), json);
+            return JsonSerializer.Serialize(dto, new JsonSerializerOptions
+            {
+                WriteIndented          = true,
+                PropertyNamingPolicy   = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────────────────
+
+        private static object GetSystemInfo()
+        {
+            // Espace disque C:
+            long diskFree = 0, diskTotal = 0;
+            try { var di = new DriveInfo("C"); diskFree = di.AvailableFreeSpace; diskTotal = di.TotalSize; }
+            catch { }
+
+            return new
+            {
+                machineName    = Environment.MachineName,
+                userName       = Environment.UserName,
+                osVersion      = GetOSVersion(),
+                processorCount = Environment.ProcessorCount,
+                is64Bit        = Environment.Is64BitOperatingSystem,
+                diskC = new
+                {
+                    totalBytes     = diskTotal,
+                    totalFormatted = FormatBytes(diskTotal),
+                    freeBytes      = diskFree,
+                    freeFormatted  = FormatBytes(diskFree),
+                    usedPct        = diskTotal > 0 ? Math.Round((double)(diskTotal - diskFree) / diskTotal * 100, 1) : 0.0
+                }
+            };
         }
 
         private static string GetOSVersion()

@@ -52,6 +52,7 @@ namespace NettoyerPc.Modules
 
         private static void KillBrowsers(CleaningStep step)
         {
+            int killed = 0;
             foreach (var name in BrowserProcesses)
             {
                 try
@@ -59,15 +60,28 @@ namespace NettoyerPc.Modules
                     var procs = Process.GetProcessesByName(name);
                     foreach (var p in procs)
                     {
-                        p.Kill(entireProcessTree: true);
-                        step.FilesDeleted++;   // compte les processus fermes
-                        step.Status = $"Ferme : {p.ProcessName}";
+                        try
+                        {
+                            p.Kill(entireProcessTree: true);
+                            p.WaitForExit(3000);
+                            step.AddLog($"Fermé : {p.ProcessName}.exe");
+                            killed++;
+                        }
+                        catch { }
                     }
                 }
                 catch { }
             }
-            // Petit delai pour laisser les fichiers se deverrouiller
-            Thread.Sleep(800);
+            if (killed > 0)
+            {
+                step.FilesDeleted += killed;
+                step.AddLog($"{killed} processus navigateur(s) fermé(s)");
+                Thread.Sleep(800);
+            }
+            else
+            {
+                step.AddLog("Aucun navigateur ouvert détecté");
+            }
         }
 
         // ─── Firefox (tous les profils + cache local) ────────────────────────
@@ -90,6 +104,7 @@ namespace NettoyerPc.Modules
         private void CleanAllFirefoxProfiles(string profilesRoot, CleaningStep step)
         {
             if (!Directory.Exists(profilesRoot)) return;
+            step.AddLog($"Nettoyage profils Firefox : {profilesRoot}");
             foreach (var profile in Directory.GetDirectories(profilesRoot))
             {
                 var cacheDirs = new[] { "cache2", "startupCache", "thumbnails", "crashes",
@@ -99,7 +114,6 @@ namespace NettoyerPc.Modules
                 foreach (var d in cacheDirs)
                     DeleteDir(Path.Combine(profile, d), step);
 
-                // Fichiers WAL/SHM sqlite (liberes par Firefox quand ferme)
                 DeleteFilePattern(profile, "*.sqlite-wal", step);
                 DeleteFilePattern(profile, "*.sqlite-shm", step);
                 DeleteFilePattern(profile, "*.log",        step);
@@ -226,6 +240,7 @@ namespace NettoyerPc.Modules
                 }
                 try { Directory.Delete(path, true); } catch { }
                 step.FilesDeleted += n;
+                if (n > 0) step.AddLog($"Supprimé : {path} ({n} fichier(s))");
             }
             catch { }
         }

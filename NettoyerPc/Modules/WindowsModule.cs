@@ -63,7 +63,8 @@ namespace NettoyerPc.Modules
                 }
                 else if (step.Name.Contains("Vérification disque"))
                 {
-                    RunCommand("chkdsk", "C: /scan", step);
+                    // chkntfs /c planifie chkdsk au prochain démarrage (plus fiable que /scan)
+                    RunCommand("chkntfs", "/c C:", step);
                 }
                 else if (step.Name.Contains("Défragmentation"))
                 {
@@ -75,7 +76,9 @@ namespace NettoyerPc.Modules
                 }
                 else if (step.Name.Contains("DISM"))
                 {
-                    RunCommand("Dism.exe", "/online /Cleanup-Image /StartComponentCleanup", step);
+                    // Exécution dans une fenêtre console visible pour que DISM
+                    // s'applique réellement (ne fonctionne pas en mode CreateNoWindow).
+                    RunPrivilegedCommand("Dism.exe", "/Online /Cleanup-Image /StartComponentCleanup", step, 600);
                 }
                 else if (step.Name.Contains("Microsoft Store"))
                     CleanMicrosoftStore(step);
@@ -104,9 +107,14 @@ namespace NettoyerPc.Modules
                         try
                         {
                             var dirInfo = new DirectoryInfo(recycleBin);
-                            step.SpaceFreed += GetDirectorySize(dirInfo);
+                            long sz = 0;
+                            int fc = 0;
+                            foreach (var f in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                                try { sz += f.Length; fc++; } catch { }
                             Directory.Delete(recycleBin, true);
-                            step.FilesDeleted++;
+                            step.SpaceFreed += sz;
+                            step.FilesDeleted += Math.Max(1, fc);
+                            step.AddLog($"Corbeille {drive.Name} vidée : {fc} fichier(s)");
                         }
                         catch { }
                     }
@@ -118,6 +126,7 @@ namespace NettoyerPc.Modules
         {
             try
             {
+                step.AddLog("Récupération de la liste des journaux d'événements...");
                 var psi = new ProcessStartInfo
                 {
                     FileName = "wevtutil.exe",
@@ -130,6 +139,7 @@ namespace NettoyerPc.Modules
                 using var process = Process.Start(psi);
                 if (process != null)
                 {
+                    int cleared = 0;
                     while (!process.StandardOutput.EndOfStream)
                     {
                         var logName = process.StandardOutput.ReadLine();
@@ -148,11 +158,13 @@ namespace NettoyerPc.Modules
                                 using var clearProcess = Process.Start(clearPsi);
                                 clearProcess?.WaitForExit(5000);
                                 step.FilesDeleted++;
+                                cleared++;
                             }
                             catch { }
                         }
                     }
                     process.WaitForExit();
+                    step.AddLog($"{cleared} journaux d'événements effacés");
                 }
             }
             catch { }
@@ -190,17 +202,20 @@ namespace NettoyerPc.Modules
                     }
                 }
 
-                // Lancement du nettoyage
+                // Lancement du nettoyage — UseShellExecute=true : évite le gel
+                // de l'UI causé par la boîte de dialogue cachée de cleanmgr.
+                // Timeout 5 min : cleanmgr très lent sur disques mécaniques.
                 var psi = new ProcessStartInfo
                 {
                     FileName = "cleanmgr.exe",
                     Arguments = "/sagerun:1",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    UseShellExecute = true,
                 };
 
+                step.AddLog("Lancement cleanmgr /sagerun:1 (timeout 5 min)...");
                 using var process = Process.Start(psi);
-                process?.WaitForExit();
+                bool done = (process?.WaitForExit(300_000)) ?? true;
+                step.AddLog(done ? "cleanmgr terminé" : "cleanmgr timeout 5min — passage à la suite");
                 step.FilesDeleted++;
             }
             catch { }
@@ -373,21 +388,48 @@ namespace NettoyerPc.Modules
 
         private void RunCommand(string command, string arguments, CleaningStep step)
         {
+            step.AddLog($"> {command} {arguments}");
             try
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = command,
-                    Arguments = arguments,
+                    FileName               = command,
+                    Arguments              = arguments,
                     RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
                 };
 
                 using var process = Process.Start(psi);
                 process?.WaitForExit(60000);
             }
-            catch { }
+            catch (Exception ex) { step.AddLog($"Erreur: {ex.Message}"); }
+        }
+
+        /// <summary>Exécute une commande système lourde (DISM, SFC, chkdsk) dans
+        /// une fenêtre CMD visible afin qu'elle s'applique réellement.</summary>
+        private void RunPrivilegedCommand(string exe, string args, CleaningStep step, int timeoutSec = 600)
+        {
+            step.AddLog($"CMD (visible)> {exe} {args}");
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "cmd.exe",
+                    Arguments              = $"/c {exe} {args}",
+                    UseShellExecute        = false,
+                    CreateNoWindow         = false, // fenêtre CMD visible
+                    RedirectStandardOutput = false,
+                    RedirectStandardError  = false,
+                };
+                using var proc = Process.Start(psi);
+                if (proc == null) { step.AddLog($"Impossible de démarrer : {exe}"); return; }
+                bool finished = proc.WaitForExit(timeoutSec * 1000);
+                step.AddLog(finished
+                    ? $"{exe} terminé (code {proc.ExitCode})"
+                    : $"{exe} timeout après {timeoutSec}s — continua en arrière-plan");
+            }
+            catch (Exception ex) { step.AddLog($"Erreur {exe}: {ex.Message}"); }
         }
 
         private long GetDirectorySize(DirectoryInfo dirInfo)

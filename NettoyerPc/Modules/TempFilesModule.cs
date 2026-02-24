@@ -46,7 +46,9 @@ namespace NettoyerPc.Modules
                     var explorerPath = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         @"Microsoft\Windows\Explorer");
-                    
+
+                    step.AddLog($"Nettoyage miniatures Windows : {explorerPath}");
+                    int thumbCount = 0; long thumbSize = 0;
                     if (Directory.Exists(explorerPath))
                     {
                         foreach (var file in Directory.GetFiles(explorerPath, "thumbcache_*.db"))
@@ -54,13 +56,18 @@ namespace NettoyerPc.Modules
                             try
                             {
                                 var fileInfo = new FileInfo(file);
+                                thumbSize += fileInfo.Length;
                                 step.SpaceFreed += fileInfo.Length;
                                 File.Delete(file);
                                 step.FilesDeleted++;
+                                thumbCount++;
                             }
                             catch { }
                         }
                     }
+                    step.AddLog(thumbCount > 0
+                        ? $"  ✔ {thumbCount} thumbcache supprimé(s) — {FormatBytes(thumbSize)} libérés"
+                        : "  ∅ Aucun thumbcache à supprimer");
                 }
                 else if (step.Name.Contains("WER"))
                     CleanWER(step);
@@ -74,7 +81,14 @@ namespace NettoyerPc.Modules
         private void CleanDirectory(string path, CleaningStep step, bool recursive = true)
         {
             if (!Directory.Exists(path))
+            {
+                step.AddLog($"  Dossier absent : {path}");
                 return;
+            }
+
+            step.AddLog($"Nettoyage : {path}");
+            long sizeBefore = step.SpaceFreed;
+            int  countBefore = step.FilesDeleted;
 
             try
             {
@@ -96,18 +110,36 @@ namespace NettoyerPc.Modules
                     {
                         try
                         {
+                            // Compter les fichiers réels avant suppression du dossier
+                            int subFileCount = 0;
+                            try
+                            {
+                                foreach (var f in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
+                                {
+                                    try { step.SpaceFreed += new FileInfo(f).Length; subFileCount++; } catch { }
+                                }
+                            }
+                            catch { }
                             Directory.Delete(dir, true);
-                            step.FilesDeleted++;
+                            step.FilesDeleted += Math.Max(1, subFileCount);
                         }
                         catch { }
                     }
                 }
             }
             catch { }
+
+            var deltaFiles = step.FilesDeleted - countBefore;
+            var deltaSize  = step.SpaceFreed   - sizeBefore;
+            if (deltaFiles > 0)
+                step.AddLog($"  ✔ {deltaFiles} fichier(s) supprimé(s) — {FormatBytes(deltaSize)} libérés");
+            else
+                step.AddLog($"  ∅ Déjà propre (aucun fichier supprimable)");
         }
 
         private void CleanWER(CleaningStep step)
         {
+            step.AddLog("Suppression rapports d'événements Windows Error Reporting...");
             var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportQueue"), step);
             CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"), step);
@@ -117,6 +149,7 @@ namespace NettoyerPc.Modules
 
         private void CleanIconCache(CleaningStep step)
         {
+            step.AddLog("Suppression du cache d'icônes Windows (iconcache*.db)...");
             var explorerPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 @"Microsoft\Windows\Explorer");
@@ -129,6 +162,7 @@ namespace NettoyerPc.Modules
                     step.SpaceFreed += fi.Length;
                     File.Delete(file);
                     step.FilesDeleted++;
+                    step.AddLog($"  Supprimé : {Path.GetFileName(file)} ({fi.Length / 1024} KB)");
                 }
                 catch { }
             }
@@ -136,11 +170,19 @@ namespace NettoyerPc.Modules
 
         private void CleanCrashDumps(CleaningStep step)
         {
+            step.AddLog("Suppression des crash dumps et mémoires de débogage...");
             var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             CleanDirectory(Path.Combine(local, "CrashDumps"), step);
             CleanDirectory(@"C:\Windows\Minidump", step, false);
             CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportQueue"), step);
             CleanDirectory(Path.Combine(local, @"Microsoft\Windows\WER\ReportArchive"), step);
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            string[] u = { "B", "KB", "MB", "GB" }; double v = bytes; int i = 0;
+            while (v >= 1024 && i < u.Length - 1) { v /= 1024; i++; }
+            return $"{v:0.##} {u[i]}";
         }
     }
 }

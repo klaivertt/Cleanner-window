@@ -44,6 +44,13 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#1E1E2E">
             <StackPanel Margin="24,20,24,20">
 
+                <!-- Option pre-release -->
+                <CheckBox x:Name="ChkPreRelease"
+                          Content=""
+                          Foreground="#AAAACC" FontSize="12"
+                          HorizontalAlignment="Left" Margin="0,0,0,16"
+                          Checked="ChkPreRelease_Changed" Unchecked="ChkPreRelease_Changed"/>
+
                 <!-- Spinner de vérification -->
                 <StackPanel x:Name="VerifyingPanel" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,40">
                     <TextBlock x:Name="TxtVerifying" Text="Vérification en cours..." FontSize="14" Foreground="#AAAACC"
@@ -71,6 +78,11 @@
                     <StackPanel>
                         <TextBlock x:Name="TxtAvailableTitle" Text="Nouvelle version disponible !" FontSize="16" FontWeight="Bold"
                                    Foreground="#6BBBFF"/>
+                        <Border x:Name="PreReleaseBadge" Visibility="Collapsed"
+                                Background="#3B1E6E" BorderBrush="#7A4FBB" BorderThickness="1"
+                                CornerRadius="4" Padding="8,3" HorizontalAlignment="Left" Margin="0,6,0,0">
+                            <TextBlock x:Name="TxtPreReleaseBadge" Text="PRE-RELEASE" FontSize="10" FontWeight="Bold" Foreground="#CC99FF"/>
+                        </Border>
                         <Grid Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>

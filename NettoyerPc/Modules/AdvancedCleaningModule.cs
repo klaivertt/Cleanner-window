@@ -39,7 +39,7 @@ namespace NettoyerPc.Modules
                 else if (step.Name.Contains("Mise à jour Windows"))
                     TriggerWindowsUpdate(step);
                 else if (step.Name.Contains("SFC"))
-                    RunCommand("sfc.exe", "/scannow", step, 3600);
+                    RunPrivilegedCommand("sfc.exe /scannow", step, 3600);
                 else if (step.Name.Contains("Défragmentation"))
                     DefragHDD(step);
                 else if (step.Name.Contains("TRIM"))
@@ -49,59 +49,85 @@ namespace NettoyerPc.Modules
 
         private void CreateRestorePoint(CleaningStep step)
         {
+            if (!Core.UserPreferences.Current.AutoRestorePoint)
+            {
+                step.AddLog("ℹ Création de point de restauration désactivée dans les paramètres.");
+                step.Status = "Point de restauration désactivé (préférences)";
+                return;
+            }
             try
             {
-                var script = @"
-                    $desc = 'NettoyeurPC2000 - ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')
-                    Enable-ComputerRestore -Drive 'C:\'
-                    Checkpoint-Computer -Description $desc -RestorePointType 'APPLICATION_INSTALL'
-                    Write-Output 'OK'
-                ";
+                step.AddLog("Activation de la protection du système sur C: ...");
+                step.AddLog("Création du point de restauration système...");
+                var script = "$desc = 'NettoyeurPC2000 - ' + (Get-Date -Format 'yyyy-MM-dd HH:mm'); " +
+                             "Enable-ComputerRestore -Drive 'C:\\' -ErrorAction SilentlyContinue; " +
+                             "Checkpoint-Computer -Description $desc -RestorePointType 'APPLICATION_INSTALL' -ErrorAction SilentlyContinue; " +
+                             "Write-Output ('Point cree : ' + $desc)";
                 RunPS(script, step, 120);
-                step.FilesDeleted++;
+                step.AddLog("✔ Point de restauration créé avec succès");
                 step.Status = "Point de restauration créé";
             }
-            catch { }
+            catch (Exception ex)
+            {
+                step.AddLog($"✗ Échec création point de restauration : {ex.Message}");
+                step.Status = "Point de restauration : échec";
+            }
         }
 
         private void CleanOldRestorePoints(CleaningStep step)
         {
             try
             {
-                // Garder seulement les 3 derniers points de restauration
-                var script = @"
-                    $snapshots = Get-ComputerRestorePoint | Sort-Object CreationTime -Descending
-                    $toDelete = $snapshots | Select-Object -Skip 3
-                    foreach ($s in $toDelete) {
-                        $id = $s.SequenceNumber
-                        $cmd = ""vssadmin delete shadows /quiet /shadow=$id""
-                        Invoke-Expression $cmd
-                    }
-                ";
-                RunPS(script, step, 60);
-                step.Status = "Anciens points nettoyés";
+                step.AddLog("Inventaire des points de restauration système...");
+                // Compter les points existants
+                var countScript = "(Get-ComputerRestorePoint | Measure-Object).Count";
+                var countStr = RunPSString(countScript).Trim();
+                if (!int.TryParse(countStr, out int total))
+                {
+                    step.AddLog("⚠ Impossible de lire les points de restauration (droits insuffisants ?)");
+                    step.Status = "Points de restauration inaccessibles";
+                    return;
+                }
+                step.AddLog($"  {total} point(s) de restauration trouvé(s)");
+                int toDelete = Math.Max(0, total - 3);
+                if (toDelete == 0)
+                {
+                    step.AddLog("✅ 3 points ou moins — rien à supprimer");
+                    step.Status = "Points de restauration à jour";
+                    return;
+                }
+                step.AddLog($"  Suppression de {toDelete} ancien(s) point(s) (garde les 3 plus récents)...");
+                // vssadmin delete shadows /for=C: /oldest /quiet supprime le plus ancien ou premier - on boucle
+                for (int i = 0; i < toDelete; i++)
+                {
+                    RunCommand("vssadmin", "delete shadows /for=C: /oldest /quiet", step, 30);
+                    step.AddLog($"  ✔ Ancien point supprimé ({i + 1}/{toDelete})");
+                    step.FilesDeleted++;
+                }
+                step.AddLog($"✔ {toDelete} ancien(s) point(s) de restauration supprimé(s)");
+                step.Status = $"{toDelete} ancien(s) point(s) supprimé(s)";
             }
-            catch { }
+            catch (Exception ex) { step.AddLog($"✗ Erreur points restauration : {ex.Message}"); }
         }
 
         private void TriggerWindowsUpdate(CleaningStep step)
         {
             try
             {
-                // Lancer Windows Update via PowerShell (module PSWindowsUpdate si disponible, sinon usoclient)
+                step.AddLog("Vérification du module PSWindowsUpdate...");
                 var checkScript = "Get-Module -ListAvailable -Name PSWindowsUpdate | Select-Object -ExpandProperty Name";
                 var checkResult = RunPSString(checkScript);
 
                 if (!string.IsNullOrEmpty(checkResult) && checkResult.Contains("PSWindowsUpdate"))
                 {
+                    step.AddLog("Module PSWindowsUpdate trouvé — lancement Install-WindowsUpdate");
                     RunPS("Import-Module PSWindowsUpdate; Install-WindowsUpdate -AcceptAll -IgnoreReboot -Silent", step, 3600);
                 }
                 else
                 {
-                    // Méthode alternative : usoclient
+                    step.AddLog("Module PSWindowsUpdate absent — utilisation de usoclient");
                     RunCommand("usoclient.exe", "StartInteractiveScan", step, 120);
                 }
-                step.FilesDeleted++;
                 step.Status = "Mise à jour lancée";
             }
             catch { }
@@ -109,36 +135,44 @@ namespace NettoyerPc.Modules
 
         private void DefragHDD(CleaningStep step)
         {
+            // Utilise /O (Optimize) qui choisit automatiquement le mode optimal :
+            // défragmentation pour les HDD, TRIM/optimize pour les SSD.
+            // Plus fiable que la détection manuelle du type de disque.
             foreach (var drive in DriveInfo.GetDrives())
             {
                 if (!drive.IsReady || drive.DriveType != DriveType.Fixed) continue;
                 try
                 {
-                    // Vérifier si c'est un HDD (DriveType fixed, vérifier si pas SSD via PowerShell)
                     var letter = drive.Name.TrimEnd('\\');
-                    var checkSSD = RunPSString($"(Get-PhysicalDisk | Where-Object {{$_.MediaType -eq 'SSD'}} | Select-Object -ExpandProperty DeviceId) -contains '{letter.Substring(0,1)}'");
-                    if (checkSSD.Contains("True")) continue; // Skip SSDs
-
-                    RunCommand("defrag", $"{letter} /U /V", step, 3600);
-                    step.FilesDeleted++;
+                    var freeGb  = drive.AvailableFreeSpace / 1024.0 / 1024.0 / 1024.0;
+                    var totalGb = drive.TotalSize          / 1024.0 / 1024.0 / 1024.0;
+                    step.AddLog($"Optimisation {letter}  {totalGb:0.#} GB  |  {freeGb:0.#} GB libre");
+                    RunCommand("defrag", $"{letter} /O /U /V", step, 3600);
+                    step.AddLog($"  ✔ {letter} optimisé");
                 }
                 catch { }
             }
+            step.Status = "Disques optimisés";
         }
 
         private void TrimSSD(CleaningStep step)
         {
+            int count = 0;
             foreach (var drive in DriveInfo.GetDrives())
             {
                 if (!drive.IsReady || drive.DriveType != DriveType.Fixed) continue;
                 try
                 {
                     var letter = drive.Name.TrimEnd('\\');
+                    step.AddLog($"TRIM / Optimisation SSD : {letter}");
                     RunCommand("defrag", $"{letter} /U /V /O", step, 600);
-                    step.FilesDeleted++;
+                    step.AddLog($"  ✔ {letter} TRIM effectué");
+                    count++;
                 }
                 catch { }
             }
+            step.AddLog($"✔ {count} disque(s) optimisé(s) (TRIM/Optimize)");
+            step.Status = $"{count} disque(s) optimisé(s)";
         }
 
         private void RunPS(string script, CleaningStep step, int timeoutSec = 60)
@@ -155,9 +189,37 @@ namespace NettoyerPc.Modules
                     CreateNoWindow = true
                 };
                 using var proc = Process.Start(psi);
-                proc?.WaitForExit(timeoutSec * 1000);
+                if (proc != null)
+                {
+                    string? line;
+                    while ((line = proc.StandardOutput.ReadLine()) != null)
+                        if (!string.IsNullOrWhiteSpace(line)) step.AddLog(line.Trim());
+                    proc.WaitForExit(timeoutSec * 1000);
+                }
             }
             catch { }
+        }
+
+        /// <summary>Exécute une commande nécessitant élévation dans un CMD visible (SFC, DISM…).</summary>
+        private void RunPrivilegedCommand(string cmdLine, CleaningStep step, int timeoutSec = 120)
+        {
+            step.AddLog($"> {cmdLine}");
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "cmd.exe",
+                    Arguments              = $"/c {cmdLine}",
+                    UseShellExecute        = false,
+                    CreateNoWindow         = false,
+                    WindowStyle            = ProcessWindowStyle.Normal
+                };
+                using var proc = Process.Start(psi);
+                if (proc == null) { step.AddLog("Impossible de démarrer le processus."); return; }
+                bool finished = proc.WaitForExit(timeoutSec * 1000);
+                step.AddLog(finished ? $"Terminé (code {proc.ExitCode})" : "Délai dépassé — processus toujours actif");
+            }
+            catch (Exception ex) { step.AddLog($"Erreur : {ex.Message}"); }
         }
 
         private string RunPSString(string script)
@@ -182,20 +244,28 @@ namespace NettoyerPc.Modules
 
         private void RunCommand(string exe, string args, CleaningStep step, int timeoutSec = 120)
         {
+            step.AddLog($"> {exe} {args}");
             try
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = exe,
-                    Arguments = args,
+                    FileName               = exe,
+                    Arguments              = args,
                     RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
                 };
                 using var proc = Process.Start(psi);
-                proc?.WaitForExit(timeoutSec * 1000);
+                if (proc != null)
+                {
+                    string? line;
+                    while ((line = proc.StandardOutput.ReadLine()) != null)
+                        if (!string.IsNullOrWhiteSpace(line)) step.AddLog(line.Trim());
+                    proc.WaitForExit(timeoutSec * 1000);
+                }
             }
-            catch { }
+            catch (Exception ex) { step.AddLog($"Erreur : {ex.Message}"); }
         }
     }
 }

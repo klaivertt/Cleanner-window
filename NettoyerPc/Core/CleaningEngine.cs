@@ -76,14 +76,26 @@ namespace NettoyerPc.Core
             _cancellationTokenSource = new CancellationTokenSource();
             var token = _cancellationTokenSource.Token;
 
-            Report = new CleaningReport { StartTime = DateTime.Now };
+            Report = new CleaningReport
+            {
+                StartTime    = DateTime.Now,
+                CleaningMode = mode.ToString()
+            };
             Steps.Clear();
 
             try
             {
-                var pairs = GetPairsForMode(mode);
+                // ── Benchmark AVANT le nettoyage ─────────────────────────────────
+                LogMessage?.Invoke("═══ Benchmark disque (avant nettoyage) ═══");
+                var bmBefore = new DiskBenchmark();
+                await Task.Run(() => bmBefore.Run(msg => LogMessage?.Invoke(msg)), token);
+                Report.BenchmarkBefore = bmBefore;
+                LogMessage?.Invoke($"  Résultat : {bmBefore.Summary()}");
+                LogMessage?.Invoke("");
+
+                var pairs      = GetPairsForMode(mode);
                 var totalSteps = pairs.Count;
-                var currentStepIndex = 0;
+                var currentIdx = 0;
 
                 foreach (var (module, step) in pairs)
                 {
@@ -94,10 +106,10 @@ namespace NettoyerPc.Core
                     {
                         Report.SkippedSteps.Add(step.Name);
                         LogMessage?.Invoke($"Ignoré (app désactivée): {step.Name}");
-                        currentStepIndex++;
-                        var skipPct = (int)((double)currentStepIndex / totalSteps * 100);
-                        progress?.Report(skipPct);
-                        ProgressChanged?.Invoke(skipPct);
+                        currentIdx++;
+                        var skipPct2 = (int)((double)currentIdx / totalSteps * 100);
+                        progress?.Report(skipPct2);
+                        ProgressChanged?.Invoke(skipPct2);
                         continue;
                     }
 
@@ -111,36 +123,56 @@ namespace NettoyerPc.Core
                         step.Status = "En cours...";
                         await module.ExecuteStepAsync(step, token);
                         step.IsCompleted = true;
-                        step.Status = "Terminé";
-                        step.Progress = 100;
+                        step.Status      = "Terminé";
+                        step.Progress    = 100;
                         Report.TotalFilesDeleted += step.FilesDeleted;
-                        Report.TotalSpaceFreed += step.SpaceFreed;
+                        Report.TotalSpaceFreed   += step.SpaceFreed;
                     }
                     catch (Exception ex)
                     {
-                        step.HasError = true;
+                        step.HasError     = true;
                         step.ErrorMessage = ex.Message;
-                        step.Status = "Erreur";
+                        step.Status       = "Erreur";
                         LogMessage?.Invoke($"Erreur: {step.Name} - {ex.Message}");
                     }
                     finally
                     {
                         step.Duration = DateTime.Now - startTime;
+                        lock (step.Logs)
+                            foreach (var logLine in step.Logs)
+                                LogMessage?.Invoke($"    ▸ {logLine}");
                         StepCompleted?.Invoke(step);
                         Report.Steps.Add(step);
                     }
 
-                    currentStepIndex++;
-                    var pct = (int)((double)currentStepIndex / totalSteps * 100);
+                    currentIdx++;
+                    var pct = (int)((double)currentIdx / totalSteps * 100);
                     progress?.Report(pct);
                     ProgressChanged?.Invoke(pct);
                 }
 
                 Report.EndTime = DateTime.Now;
-                var reportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-                Directory.CreateDirectory(reportDir);
-                Report.SaveReport(reportDir);
-                Report.SaveReportJson(reportDir);
+
+                // ── Benchmark APRÈS le nettoyage ─────────────────────────────────
+                LogMessage?.Invoke("");
+                LogMessage?.Invoke("═══ Benchmark disque (après nettoyage) ═══");
+                var bmAfter = new DiskBenchmark();
+                await Task.Run(() => bmAfter.Run(msg => LogMessage?.Invoke(msg)), CancellationToken.None);
+                Report.BenchmarkAfter = bmAfter;
+                LogMessage?.Invoke($"  Résultat : {bmAfter.Summary()}");
+                LogMessage?.Invoke("");
+
+                // ── Score de performance ──────────────────────────────────────────
+                Report.Score = new PerformanceScore(Report, bmBefore, bmAfter);
+                LogMessage?.Invoke($"═══ Score de performance : {Report.Score.Score}/100  (Grade {Report.Score.Grade}) ═══");
+                LogMessage?.Invoke($"  {Report.Score.Message}");
+                LogMessage?.Invoke($"  Benchmark delta : {Report.Score.BenchmarkDelta}");
+                LogMessage?.Invoke("");
+
+                // ── Sauvegarde rapport JSON ───────────────────────────────────────
+                var reportDir  = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+                var reportPath = Report.SaveReportJson(reportDir);
+                LogMessage?.Invoke($"Rapport JSON sauvegardé : {reportPath}");
                 LogMessage?.Invoke($"Nettoyage terminé — {Report.TotalFilesDeleted} fichiers, {FormatBytes(Report.TotalSpaceFreed)} libérés");
             }
             catch (Exception ex)

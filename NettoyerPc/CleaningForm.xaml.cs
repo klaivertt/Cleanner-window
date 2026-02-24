@@ -335,37 +335,127 @@ namespace NettoyerPc
         {
             Dispatcher.Invoke(() =>
             {
-                var L = Localizer.T;
-
-                TitleText.Text        = L("clean.title.done");
-                SubtitleText.Text     = $"{report.TotalFilesDeleted:N0} fichiers  |  {FormatBytes(report.TotalSpaceFreed)} libérés";
-                ProgressText.Text     = L("clean.done.label");
-                GlobalProgress.Value  = 100;
-                ProgressPercent.Text  = "100%";
-
-                UpdateTotals();
+                var L   = Localizer.T;
+                var score = report.Score;
+                var bmB   = report.BenchmarkBefore;
+                var bmA   = report.BenchmarkAfter;
 
                 var dur = report.TotalDuration;
                 var durStr = dur.TotalMinutes >= 60
                     ? $"{(int)dur.TotalHours}h {dur.Minutes}m"
                     : $"{(int)dur.TotalMinutes}m {dur.Seconds}s";
 
+                TitleText.Text        = L("clean.title.done");
+                SubtitleText.Text     = $"{report.TotalFilesDeleted:N0} fichiers  |  {FormatBytes(report.TotalSpaceFreed)} libérés  |  ⏱ {durStr}";
+                ProgressText.Text     = L("clean.done.label");
+                GlobalProgress.Value  = 100;
+                ProgressPercent.Text  = "100%";
+
+                UpdateTotals();
+
+
+                // ── Log récapitulatif ──────────────────────────────────────────────
                 AddLog("");
+                AddLog("═══════════════════════════════════════");
                 AddLog(L("clean.log.summary"));
-                AddLog(L("clean.log.files") + " " + report.TotalFilesDeleted.ToString("N0"));
-                AddLog(L("clean.log.space") + " " + FormatBytes(report.TotalSpaceFreed));
-                AddLog(L("clean.log.threats") + " " + report.ThreatsFound);
-                AddLog(L("clean.log.steps") + " " + _stepsOk + " / " + _stepsTotal);
-                AddLog(L("clean.log.duration") + " " + durStr);
-                AddLog(L("clean.log.report"));
+                AddLog($"  Fichiers supprimés  : {report.TotalFilesDeleted:N0}");
+                AddLog($"  Espace libéré       : {FormatBytes(report.TotalSpaceFreed)}");
+                AddLog($"  Menaces             : {report.ThreatsFound}");
+                AddLog($"  Étapes réussies     : {_stepsOk} / {_stepsTotal}");
+                var errCount = report.Steps.Count(s => s.HasError);
+                if (errCount > 0)
+                    AddLog($"  ⚠ Étapes en erreur   : {errCount}");
+                AddLog($"  Durée totale        : {durStr}");
+
+                if (score != null)
+                {
+                    AddLog("");
+                    AddLog($"  ★ Score performance : {score.Score}/100  (Grade {score.Grade})");
+                    AddLog($"  {score.Message}");
+                    if (score.BenchmarkDelta != "Non mesuré")
+                        AddLog($"  Benchmark disque    : {score.BenchmarkDelta}");
+                }
+
+                // ── Détail des étapes significatives ───────────────────────────────────────
+                var topSteps = report.Steps
+                    .Where(s => s.SpaceFreed > 0 || s.FilesDeleted > 0)
+                    .OrderByDescending(s => s.SpaceFreed)
+                    .Take(10)
+                    .ToList();
+                if (topSteps.Count > 0)
+                {
+                    AddLog("");
+                    AddLog("  ─ Top étapes par espace libéré ──────────────────");
+                    foreach (var s in topSteps)
+                    {
+                        var icon = s.HasError ? "✗" : "✔";
+                        var dur2 = s.Duration.TotalSeconds < 60
+                            ? $"{s.Duration.TotalSeconds:0.#}s"
+                            : $"{(int)s.Duration.TotalMinutes}m{s.Duration.Seconds:00}s";
+                        AddLog($"  {icon} {s.Name}");
+                        AddLog($"       {s.FilesDeleted:N0} fichiers  |  {FormatBytes(s.SpaceFreed)}  |  {dur2}");
+                    }
+                }
+
+                // ── Étapes en erreur ──────────────────────────────────────────────
+                var errorSteps = report.Steps.Where(s => s.HasError).ToList();
+                if (errorSteps.Count > 0)
+                {
+                    AddLog("");
+                    AddLog($"  ⚠ {errorSteps.Count} étape(s) en erreur ──────────────────────");
+                    foreach (var s in errorSteps)
+                        AddLog($"  ✗ {s.Name} : {s.ErrorMessage}");
+                }
+                if (bmB != null && bmA != null && bmB.Success && bmA.Success)
+                {
+                    AddLog("");
+                    AddLog("  ─ Benchmark disque ─────────────────");
+                    AddLog($"  Avant  — Lecture {bmB.ReadSpeedMBs} MB/s · Écriture {bmB.WriteSpeedMBs} MB/s");
+                    AddLog($"  Après  — Lecture {bmA.ReadSpeedMBs} MB/s · Écriture {bmA.WriteSpeedMBs} MB/s");
+                    var rdDelta = bmA.ReadSpeedMBs  - bmB.ReadSpeedMBs;
+                    var wrDelta = bmA.WriteSpeedMBs - bmB.WriteSpeedMBs;
+                    AddLog($"  Delta  — Lecture {(rdDelta >= 0 ? "+" : "")}{rdDelta:0.#} MB/s · Écriture {(wrDelta >= 0 ? "+" : "")}{wrDelta:0.#} MB/s");
+                }
+
                 AddLog("");
+                AddLog("  Rapport JSON sauvegardé dans le dossier Reports/");
+                AddLog("═══════════════════════════════════════");
+                AddLog("");
+
+                // Auto-ouvrir le rapport si activé
+                if (Core.UserPreferences.Current.AutoOpenReport)
+                {
+                    try
+                    {
+                        var reportDir  = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+                        var latest = Directory.GetFiles(reportDir, "CleanerReport_*.json")
+                            .OrderByDescending(f => f)
+                            .FirstOrDefault();
+                        if (latest != null)
+                            Process.Start(new ProcessStartInfo(latest) { UseShellExecute = true });
+                    }
+                    catch { }
+                }
+
+                // ── MessageBox récapitulatif enrichi ──────────────────────────────
+                var scoreLine = score != null
+                    ? $"\n\n  ★ Score : {score.Score}/100  Grade {score.Grade}\n  {score.Message}"
+                    : "";
+
+                string benchLine = "";
+                if (bmB?.Success == true && bmA?.Success == true)
+                    benchLine = $"\n\n  Disque avant  : {bmB.ReadSpeedMBs} MB/s R · {bmB.WriteSpeedMBs} MB/s W" +
+                                $"\n  Disque après  : {bmA.ReadSpeedMBs} MB/s R · {bmA.WriteSpeedMBs} MB/s W" +
+                                $"\n  Delta lecture : {(bmA.ReadSpeedMBs - bmB.ReadSpeedMBs >= 0 ? "+" : "")}{bmA.ReadSpeedMBs - bmB.ReadSpeedMBs:0.#} MB/s";
 
                 MessageBox.Show(
                     L("clean.summary.ok") + "\n\n" +
-                    "  " + L("clean.summary.space") + "  " + FormatBytes(report.TotalSpaceFreed) + "\n" +
-                    "  " + L("clean.summary.files") + "  " + report.TotalFilesDeleted.ToString("N0") + "\n" +
-                    "  " + L("clean.summary.steps") + "  " + _stepsOk + " / " + _stepsTotal + "\n" +
-                    "  " + L("clean.summary.dur") + "  " + durStr + "\n\n" +
+                    $"  {L("clean.summary.space")}  {FormatBytes(report.TotalSpaceFreed)}\n" +
+                    $"  {L("clean.summary.files")}  {report.TotalFilesDeleted:N0}\n" +
+                    $"  {L("clean.summary.steps")}  {_stepsOk} / {_stepsTotal}" +
+                    (report.Steps.Any(s => s.HasError) ? $"  (⚠ {report.Steps.Count(s => s.HasError)} erreur(s))" : "") + "\n" +
+                    $"  {L("clean.summary.dur")}  {durStr}" +
+                    scoreLine + benchLine + "\n\n" +
                     L("clean.summary.report") +
                     (report.RebootRequired ? L("clean.summary.reboot") : ""),
                     L("clean.summary.title"),

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace NettoyerPc.Core
 {
@@ -15,5 +16,15 @@ namespace NettoyerPc.Core
         public TimeSpan Duration { get; set; }
         public int FilesDeleted { get; set; } = 0;
         public long SpaceFreed { get; set; } = 0;
+
+        /// <summary>Journal d'activité détaillé de l'étape (rempli par le module pendant l'exécution).</summary>
+        public List<string> Logs { get; } = new();
+
+        /// <summary>Ajoute une entrée au journal et met à jour le statut visible.</summary>
+        public void AddLog(string msg)
+        {
+            lock (Logs) Logs.Add(msg);
+            Status = msg;
+        }
     }
 }
